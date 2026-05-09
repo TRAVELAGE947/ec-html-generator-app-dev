@@ -1,6 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  CheckCircle,
+  Copy,
+  Download,
+  Eye,
+  FileText,
+  Image,
+  Info,
+  Maximize2,
+  Monitor,
+  Rocket,
+  Settings2,
+  Smartphone,
+  X,
+} from "lucide-react";
 
 type ProductForm = {
   productName: string;
@@ -30,6 +45,9 @@ type ProductForm = {
   yahooLineBannerUrl: string;
   yahooStockNoticeUrl: string;
   yahooPolicyUrl: string;
+  insertLineBanner: boolean;
+  insertStockNotice: boolean;
+  insertPolicyImage: boolean;
 };
 
 type GeneratedHtml = {
@@ -39,11 +57,17 @@ type GeneratedHtml = {
   yahooMobile: string;
 };
 
+type ProductTextFieldKey = keyof Omit<
+  ProductForm,
+  | "rakutenImageUrls"
+  | "yahooImageUrls"
+  | "insertLineBanner"
+  | "insertStockNotice"
+  | "insertPolicyImage"
+>;
+
 type TextField = {
-  key: keyof Omit<
-    ProductForm,
-    "rakutenImageUrls" | "yahooImageUrls"
-  >;
+  key: ProductTextFieldKey;
   label: string;
   placeholder?: string;
   multiline?: boolean;
@@ -59,6 +83,7 @@ type HtmlOutput = {
 
 type BannerKey = "policyUrl" | "stockNoticeUrl" | "lineBannerUrl";
 type BannerUrls = Record<BannerKey, string>;
+type BannerToggleKey = "insertLineBanner" | "insertStockNotice" | "insertPolicyImage";
 
 const copyFieldKeys = [
   "leadCopy",
@@ -97,18 +122,15 @@ const initialForm: ProductForm = {
     "※海外製品のため、日本製品に比べて縫製の甘さ、糸の始末、多少のほつれ、タグの位置違いなどが見られる場合がございます。\n\n※生産時期により、色味・サイズ感・仕様が若干異なる場合がございます。\n\n※ご覧いただくモニター環境や撮影時の光の加減により、実際の商品と色味が異なって見える場合がございます。\n\n※サイズは平置き採寸のため、1〜3cm程度の誤差が生じる場合がございます。\n\n※ご使用前に商品タグや洗濯表示をご確認ください。",
   rakutenImageUrls: Array.from({ length: 20 }, () => ""),
   yahooImageUrls: Array.from({ length: 20 }, () => ""),
-  rakutenLineBannerUrl:
-    "https://image.rakuten.co.jp/h-garden-fuk/cabinet/10309712/line_200_banner2.jpg",
-  rakutenStockNoticeUrl:
-    "https://image.rakuten.co.jp/h-garden-fuk/cabinet/shop/zaiko2026.jpg",
-  rakutenPolicyUrl:
-    "https://image.rakuten.co.jp/h-garden-fuk/cabinet/policy/policy.jpg",
-  yahooLineBannerUrl:
-    "https://shopping.c.yimg.jp/lib/h-garden/line_200off_banner2.jpg",
-  yahooStockNoticeUrl:
-    "https://shopping.c.yimg.jp/lib/h-garden/zaiko2026.jpg",
-  yahooPolicyUrl:
-    "https://shopping.c.yimg.jp/lib/h-garden/policy.jpg",
+  rakutenLineBannerUrl: "",
+  rakutenStockNoticeUrl: "",
+  rakutenPolicyUrl: "",
+  yahooLineBannerUrl: "",
+  yahooStockNoticeUrl: "",
+  yahooPolicyUrl: "",
+  insertLineBanner: true,
+  insertStockNotice: true,
+  insertPolicyImage: true,
 };
 
 const formStorageKey = "ec-html-generator-form-v1";
@@ -160,6 +182,9 @@ function normalizeStoredForm(value: unknown): ProductForm {
     yahooLineBannerUrl: typeof source.yahooLineBannerUrl === "string" ? source.yahooLineBannerUrl : initialForm.yahooLineBannerUrl,
     yahooStockNoticeUrl: typeof source.yahooStockNoticeUrl === "string" ? source.yahooStockNoticeUrl : initialForm.yahooStockNoticeUrl,
     yahooPolicyUrl: typeof source.yahooPolicyUrl === "string" ? source.yahooPolicyUrl : initialForm.yahooPolicyUrl,
+    insertLineBanner: typeof source.insertLineBanner === "boolean" ? source.insertLineBanner : initialForm.insertLineBanner,
+    insertStockNotice: typeof source.insertStockNotice === "boolean" ? source.insertStockNotice : initialForm.insertStockNotice,
+    insertPolicyImage: typeof source.insertPolicyImage === "boolean" ? source.insertPolicyImage : initialForm.insertPolicyImage,
   };
 }
 
@@ -183,12 +208,12 @@ const fields: TextField[] = [
   { key: "colorDescription", label: "COLOR説明", multiline: true },
   { key: "closingCopy", label: "締めコピー", multiline: true },
   { key: "notice", label: "注意事項", multiline: true },
-  { key: "rakutenLineBannerUrl", label: "楽天 LINEバナーURL", placeholder: "https://image.rakuten.co.jp/h-garden-fuk/cabinet/line.jpg" },
-  { key: "rakutenStockNoticeUrl", label: "楽天 在庫注意画像URL", placeholder: "https://image.rakuten.co.jp/h-garden-fuk/cabinet/stock.jpg" },
-  { key: "rakutenPolicyUrl", label: "楽天 ポリシー画像URL", placeholder: "https://image.rakuten.co.jp/h-garden-fuk/cabinet/policy.jpg" },
-  { key: "yahooLineBannerUrl", label: "Yahoo LINEバナーURL", placeholder: "https://shopping.c.yimg.jp/lib/h-garden/line.jpg" },
-  { key: "yahooStockNoticeUrl", label: "Yahoo 在庫注意画像URL", placeholder: "https://shopping.c.yimg.jp/lib/h-garden/stock.jpg" },
-  { key: "yahooPolicyUrl", label: "Yahoo ポリシー画像URL", placeholder: "https://shopping.c.yimg.jp/lib/h-garden/policy.jpg" },
+  { key: "rakutenLineBannerUrl", label: "楽天 LINEバナーURL", placeholder: "例：https://image.rakuten.co.jp/shop-name/cabinet/line.jpg" },
+  { key: "rakutenStockNoticeUrl", label: "楽天 在庫注意画像URL", placeholder: "例：https://image.rakuten.co.jp/shop-name/cabinet/stock.jpg" },
+  { key: "rakutenPolicyUrl", label: "楽天 ポリシー画像URL", placeholder: "例：https://image.rakuten.co.jp/shop-name/cabinet/policy.jpg" },
+  { key: "yahooLineBannerUrl", label: "Yahoo LINEバナーURL", placeholder: "例：https://shopping.c.yimg.jp/lib/shop-name/line.jpg" },
+  { key: "yahooStockNoticeUrl", label: "Yahoo 在庫注意画像URL", placeholder: "例：https://shopping.c.yimg.jp/lib/shop-name/stock.jpg" },
+  { key: "yahooPolicyUrl", label: "Yahoo ポリシー画像URL", placeholder: "例：https://shopping.c.yimg.jp/lib/shop-name/policy.jpg" },
 ];
 
 const outputs: HtmlOutput[] = [
@@ -240,9 +265,9 @@ const pcSpecLabels: Array<[label: string, key: keyof ProductForm]> = [
   ["ブランド", "brand"],
 ];
 
-const bannerOutputOrder: BannerKey[] = ["policyUrl", "stockNoticeUrl", "lineBannerUrl"];
-const yahooImageBaseUrl = "https://shopping.c.yimg.jp/lib/h-garden/";
-const rakutenImageBaseUrl = "https://image.rakuten.co.jp/h-garden-fuk/cabinet/";
+const bannerOutputOrder: BannerKey[] = ["lineBannerUrl", "stockNoticeUrl", "policyUrl"];
+const yahooImageBaseUrl = "";
+const rakutenImageBaseUrl = "";
 
 function escapeHtml(value: string): string {
   return value
@@ -657,13 +682,8 @@ function imagesFrom(imageUrls: string[], startIndex: number, endIndex: number): 
     .join("\n");
 }
 
-function generateRakutenPcHtml(form: ProductForm): string {
+function generateRakutenPcHtml(form: ProductForm, banners: BannerUrls): string {
   const imageUrls = form.rakutenImageUrls;
-  const banners: BannerUrls = {
-    lineBannerUrl: form.rakutenLineBannerUrl,
-    stockNoticeUrl: form.rakutenStockNoticeUrl,
-    policyUrl: form.rakutenPolicyUrl,
-  };
   const titleMeta = [form.brand.trim(), form.country.trim()].filter(Boolean).join(" / ");
   const colorText = form.colors.trim();
 
@@ -770,27 +790,39 @@ function generateYahooMobileHtml(form: ProductForm, banners: BannerUrls): string
     .join("\n");
 }
 
+function enabledBannerUrls(form: ProductForm, mall: "rakuten" | "yahoo"): BannerUrls {
+  return {
+    lineBannerUrl: form.insertLineBanner
+      ? mall === "rakuten"
+        ? form.rakutenLineBannerUrl
+        : form.yahooLineBannerUrl
+      : "",
+    stockNoticeUrl: form.insertStockNotice
+      ? mall === "rakuten"
+        ? form.rakutenStockNoticeUrl
+        : form.yahooStockNoticeUrl
+      : "",
+    policyUrl: form.insertPolicyImage
+      ? mall === "rakuten"
+        ? form.rakutenPolicyUrl
+        : form.yahooPolicyUrl
+      : "",
+  };
+}
+
 function generateHtml(form: ProductForm): GeneratedHtml {
-  const rakutenBanners: BannerUrls = {
-    lineBannerUrl: form.rakutenLineBannerUrl,
-    stockNoticeUrl: form.rakutenStockNoticeUrl,
-    policyUrl: form.rakutenPolicyUrl,
-  };
-  const yahooBanners: BannerUrls = {
-    lineBannerUrl: form.yahooLineBannerUrl,
-    stockNoticeUrl: form.yahooStockNoticeUrl,
-    policyUrl: form.yahooPolicyUrl,
-  };
+  const rakutenBanners = enabledBannerUrls(form, "rakuten");
+  const yahooBanners = enabledBannerUrls(form, "yahoo");
 
   return {
     rakutenMobile: generateSimpleHtml(form, form.rakutenImageUrls, rakutenBanners),
-    rakutenPc: generateRakutenPcHtml(form),
+    rakutenPc: generateRakutenPcHtml(form, rakutenBanners),
     yahoo: generateSimpleHtml(form, form.yahooImageUrls, yahooBanners),
     yahooMobile: generateYahooMobileHtml(form, yahooBanners),
   };
 }
 
-export function EcHtmlGenerator() {
+function EcHtmlGeneratorLegacy() {
   const [form, setForm] = useState<ProductForm>(initialForm);
   const [generated, setGenerated] = useState<GeneratedHtml>(emptyGeneratedHtml);
   const [hasGeneratedHtml, setHasGeneratedHtml] = useState(false);
@@ -834,10 +866,7 @@ export function EcHtmlGenerator() {
   }, [form, hasRestoredForm]);
 
   const updateField = (
-    key: keyof Omit<
-      ProductForm,
-      "rakutenImageUrls" | "yahooImageUrls"
-    >,
+    key: ProductTextFieldKey,
     value: string,
   ) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -1102,7 +1131,7 @@ export function EcHtmlGenerator() {
                       <input
                         value={url}
                         onChange={(event) => updateRakutenImageUrl(index, event.target.value)}
-                        placeholder="https://image.rakuten.co.jp/h-garden-fuk/cabinet/t2602/t2602-2-1-2.jpg"
+                        placeholder="https://image.rakuten.co.jp/shop-name/cabinet/item/item-1.jpg"
                         className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                       />
                       {cannotConvertRakutenUrl(url) ? (
@@ -1129,7 +1158,7 @@ export function EcHtmlGenerator() {
                       <input
                         value={url}
                         onChange={(event) => updateYahooImageUrl(index, event.target.value)}
-                        placeholder="https://shopping.c.yimg.jp/lib/h-garden/t2602/t2602-2-1-2.jpg"
+                        placeholder="https://shopping.c.yimg.jp/lib/shop-name/item-1.jpg"
                         className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                       />
                     </label>
@@ -1198,3 +1227,819 @@ export function EcHtmlGenerator() {
     </main>
   );
 }
+
+export function EcHtmlGenerator() {
+  const [form, setForm] = useState<ProductForm>(initialForm);
+  const [generated, setGenerated] = useState<GeneratedHtml>(emptyGeneratedHtml);
+  const [hasGeneratedHtml, setHasGeneratedHtml] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<keyof GeneratedHtml | null>(null);
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [hasRestoredForm, setHasRestoredForm] = useState(false);
+  const [activeMall, setActiveMall] = useState<"rakuten" | "yahoo">("rakuten");
+  const [activePreview, setActivePreview] = useState<keyof GeneratedHtml>("rakutenPc");
+  const [isHtmlOpen, setIsHtmlOpen] = useState(false);
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+  const filledRakutenImageCount = useMemo(
+    () => filled(form.rakutenImageUrls).length,
+    [form.rakutenImageUrls],
+  );
+  const filledYahooImageCount = useMemo(
+    () => filled(form.yahooImageUrls).length,
+    [form.yahooImageUrls],
+  );
+  const currentPreviewOutput = outputs.find((output) => output.key === activePreview) ?? outputs[0];
+  const previewImages = useMemo(
+    () => filled(
+      activePreview === "rakutenPc" || activePreview === "rakutenMobile"
+        ? form.rakutenImageUrls
+        : form.yahooImageUrls,
+    ),
+    [activePreview, form.rakutenImageUrls, form.yahooImageUrls],
+  );
+  const outputWarnings = useMemo<Record<keyof GeneratedHtml, string>>(
+    () => ({
+      rakutenPc: filledRakutenImageCount ? "" : "楽天用画像URLが未入力です",
+      rakutenMobile: filledRakutenImageCount ? "" : "楽天用画像URLが未入力です",
+      yahoo: filledYahooImageCount ? "" : "Yahoo用画像URLが未入力です",
+      yahooMobile: filledYahooImageCount ? "" : "Yahoo用画像URLが未入力です",
+    }),
+    [filledRakutenImageCount, filledYahooImageCount],
+  );
+
+  useEffect(() => {
+    try {
+      const storedForm = window.localStorage.getItem(formStorageKey);
+      if (storedForm) {
+        setForm(normalizeStoredForm(JSON.parse(storedForm)));
+      }
+    } catch (error) {
+      console.warn("Failed to restore EC HTML generator form:", error);
+    } finally {
+      setHasRestoredForm(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hasRestoredForm) {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(formStorageKey, JSON.stringify(form));
+    } catch (error) {
+      console.warn("Failed to save EC HTML generator form:", error);
+    }
+  }, [form, hasRestoredForm]);
+
+  const updateField = (
+    key: ProductTextFieldKey,
+    value: string,
+  ) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const updateToggle = (key: BannerToggleKey, value: boolean) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const updateImageUrls = (
+    key: "rakutenImageUrls" | "yahooImageUrls",
+    value: string,
+  ) => {
+    setForm((current) => {
+      const nextImageUrls = value.split(/\r?\n/).slice(0, 20);
+      return {
+        ...current,
+        [key]: Array.from({ length: 20 }, (_, index) => nextImageUrls[index] ?? ""),
+      };
+    });
+  };
+
+  const selectMall = (mall: "rakuten" | "yahoo") => {
+    setActiveMall(mall);
+    setActivePreview(mall === "rakuten" ? "rakutenPc" : "yahoo");
+  };
+
+  const handleGenerate = () => {
+    setGenerated(generateHtml(form));
+    setHasGeneratedHtml(true);
+    setCopiedKey(null);
+    setCopiedAll(false);
+  };
+
+  const handleClearForm = () => {
+    if (!window.confirm("入力内容をクリアしますか？")) {
+      return;
+    }
+
+    window.localStorage.removeItem(formStorageKey);
+    setForm(initialForm);
+    setGenerated(emptyGeneratedHtml);
+    setHasGeneratedHtml(false);
+    setCopiedKey(null);
+    setCopiedAll(false);
+  };
+
+  const handleAutoCopy = () => {
+    const hasExistingCopy = copyFieldKeys.some((key) => form[key].trim());
+
+    if (
+      hasExistingCopy &&
+      !window.confirm("入力済みの雑誌風コピー欄があります。上書きしてもよろしいですか？")
+    ) {
+      return;
+    }
+
+    setForm((current) => ({ ...current, ...buildAutoCopy(current) }));
+  };
+
+  const handleGenerateYahooUrls = () => {
+    const hasExistingYahooUrls =
+      form.yahooImageUrls.some((url) => url.trim()) ||
+      form.yahooLineBannerUrl.trim() ||
+      form.yahooStockNoticeUrl.trim() ||
+      form.yahooPolicyUrl.trim();
+
+    if (
+      hasExistingYahooUrls &&
+      !window.confirm("入力済みのYahoo画像URLがあります。楽天URLから生成したURLで上書きしてもよろしいですか？")
+    ) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      yahooImageUrls: convertRakutenUrlsToYahoo(current.rakutenImageUrls),
+      yahooLineBannerUrl: convertRakutenToYahooUrl(current.rakutenLineBannerUrl),
+      yahooStockNoticeUrl: convertRakutenToYahooUrl(current.rakutenStockNoticeUrl),
+      yahooPolicyUrl: convertRakutenToYahooUrl(current.rakutenPolicyUrl),
+    }));
+  };
+
+  const handleCopy = async (key: keyof GeneratedHtml) => {
+    const text = generated[key];
+
+    if (!text) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    window.setTimeout(() => {
+      setCopiedKey((current) => (current === key ? null : current));
+    }, 1800);
+  };
+
+  const downloadText = (title: string, text: string) => {
+    if (!text) {
+      return;
+    }
+
+    const blob = new Blob([text], { type: "text/html;charset=utf-8" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = title;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleDownload = (key: keyof GeneratedHtml) => {
+    const filenames: Record<keyof GeneratedHtml, string> = {
+      rakutenPc: "rakuten-pc.html",
+      rakutenMobile: "rakuten-smartphone.html",
+      yahoo: "yahoo-pc.html",
+      yahooMobile: "yahoo-smartphone.html",
+    };
+
+    downloadText(filenames[key], generated[key]);
+  };
+
+  const handleCopyAll = async () => {
+    if (!hasGeneratedHtml) {
+      return;
+    }
+
+    const text = outputs
+      .map((output) => [`【${output.title}】`, generated[output.key]].join("\n"))
+      .join("\n\n");
+
+    await navigator.clipboard.writeText(text);
+    setCopiedAll(true);
+    window.setTimeout(() => setCopiedAll(false), 1800);
+  };
+
+  const handleDownloadAll = () => {
+    outputs.forEach((output) => handleDownload(output.key));
+  };
+
+  const productFields: Array<[ProductTextFieldKey, string, string]> = [
+    ["productName", "商品名", "例）Velu Cotton Beret"],
+    ["brand", "ブランド", "例）mini market"],
+    ["colors", "カラー", "例）Light Beige / Charcoal"],
+    ["sizes", "サイズ", "例）free"],
+    ["material", "素材", "例）Cotton 100%"],
+    ["country", "生産国", "例）Made in Korea"],
+  ];
+  const advancedCopyFields = fields.filter((field) =>
+    [
+      "leadCopy",
+      "pointLead",
+      "point1Title",
+      "point1Text",
+      "point2Title",
+      "point2Text",
+      "point3Title",
+      "point3Text",
+      "extraDescription",
+      "colorDescription",
+      "closingCopy",
+      "notice",
+    ].includes(field.key),
+  );
+  const bannerFields = fields.filter((field) =>
+    [
+      "rakutenLineBannerUrl",
+      "rakutenStockNoticeUrl",
+      "rakutenPolicyUrl",
+      "yahooLineBannerUrl",
+      "yahooStockNoticeUrl",
+      "yahooPolicyUrl",
+    ].includes(field.key),
+  );
+  const bannerToggles: Array<[BannerToggleKey, string]> = [
+    ["insertLineBanner", "LINEバナーを挿入"],
+    ["insertStockNotice", "在庫注意画像を挿入"],
+    ["insertPolicyImage", "ポリシー画像を挿入"],
+  ];
+  const previewSpecRows = (
+    [
+      ["ブランド", form.brand],
+      ["カラー", form.colors],
+      ["サイズ", form.sizes],
+      ["素材", form.material],
+      ["生産国", form.country],
+    ] as Array<[string, string]>
+  ).filter(([, value]) => value.trim().length > 0);
+
+  const renderPreview = (expanded = false) => (
+    <div className={["mx-auto bg-white", expanded ? "max-w-4xl" : "max-w-[760px]"].join(" ")}>
+      <div className="overflow-hidden rounded-lg border border-stone-200 bg-white">
+        <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(220px,44%)_1fr]">
+          <div className="grid gap-3">
+            {previewImages[0] ? (
+              <img
+                src={previewImages[0]}
+                alt={form.productName || "商品メイン画像"}
+                className="aspect-square w-full rounded-lg border border-stone-200 object-cover"
+              />
+            ) : (
+              <div className="flex aspect-square w-full items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 text-stone-400">
+                <Image className="h-10 w-10" aria-hidden="true" />
+              </div>
+            )}
+            <div className="grid grid-cols-5 gap-2">
+              {Array.from({ length: 5 }, (_, index) => previewImages[index + 1] ?? "").map((url, index) => (
+                <div
+                  key={`${url}-${index}`}
+                  className="aspect-square overflow-hidden rounded-md border border-stone-200 bg-stone-50"
+                >
+                  {url ? (
+                    <img
+                      src={url}
+                      alt={`サブ画像 ${index + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-5">
+            <div>
+              <p className="text-sm font-bold text-emerald-700">
+                {form.brand || "ブランド名"}
+              </p>
+              <h2 className="mt-2 text-2xl font-bold leading-tight text-stone-900">
+                {form.productName || "商品名が入ります"}
+              </h2>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-stone-600">
+                {form.description || "商品説明文を入力すると、完成イメージとしてここに表示されます。"}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
+              <h3 className="text-sm font-bold text-stone-800">商品詳細表</h3>
+              <dl className="mt-3 grid gap-2 text-sm">
+                {previewSpecRows.length ? (
+                  previewSpecRows.map(([label, value]) => (
+                    <div
+                      key={label}
+                      className="grid grid-cols-[88px_1fr] gap-3 border-b border-stone-200 pb-2 last:border-b-0 last:pb-0"
+                    >
+                      <dt className="font-bold text-stone-500">{label}</dt>
+                      <dd className="whitespace-pre-wrap text-stone-800">{value}</dd>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-stone-500">商品情報を入力すると詳細が表示されます。</p>
+                )}
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <main className="min-h-screen bg-[#f5f3ef] px-4 py-6 text-stone-900 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-[1500px] flex-col gap-6">
+        <header className="rounded-lg border border-stone-200 bg-white px-5 py-6 shadow-sm sm:px-7">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-[#efe7d8] px-3 py-1 text-sm font-bold text-stone-700">
+                <FileText className="h-4 w-4" aria-hidden="true" />
+                EC HTML Generator
+              </div>
+              <h1 className="mt-3 text-3xl font-bold tracking-normal text-stone-950 sm:text-4xl">
+                EC HTML Generator
+              </h1>
+              <p className="mt-2 text-base font-medium text-stone-600">
+                楽天市場・Yahoo!ショッピング対応 商品ページHTML作成ツール
+              </p>
+            </div>
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
+              1回の入力で4種類のHTMLをまとめて生成
+            </div>
+          </div>
+        </header>
+
+        <section className="grid gap-6 xl:grid-cols-[minmax(420px,520px)_1fr]">
+          <form
+            id="ec-html-generator-form"
+            className="grid content-start gap-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleGenerate();
+            }}
+          >
+            <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <Settings2 className="h-5 w-5 text-stone-500" aria-hidden="true" />
+                <h2 className="text-lg font-bold">出力設定</h2>
+              </div>
+
+              <div className="grid gap-5">
+                <div>
+                  <p className="mb-2 text-sm font-bold text-stone-700">出力モール</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      ["rakuten", "R", "楽天市場"],
+                      ["yahoo", "Y!", "Yahoo!ショッピング"],
+                    ].map(([mall, badge, label]) => (
+                      <button
+                        key={mall}
+                        type="button"
+                        onClick={() => selectMall(mall as "rakuten" | "yahoo")}
+                        className={[
+                          "flex items-center gap-2 rounded-lg border px-3 py-3 text-left text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2",
+                          activeMall === mall
+                            ? "border-emerald-500 bg-emerald-50 text-emerald-800"
+                            : "border-stone-200 bg-stone-50 text-stone-700 hover:bg-stone-100",
+                        ].join(" ")}
+                      >
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-xs shadow-sm">
+                          {badge}
+                        </span>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-sm font-bold text-stone-700">生成対象</p>
+                  <div className="flex flex-wrap gap-2">
+                    {outputs.map((output) => (
+                      <span
+                        key={output.key}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-[#dccdb8] bg-[#f8f3ea] px-3 py-1.5 text-sm font-bold text-stone-700"
+                      >
+                        <CheckCircle className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                        {output.title.replace("用HTML", "")}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-stone-600">
+                    1回の入力で、楽天PC・楽天スマホ・Yahoo! PC・Yahoo! スマホ用HTMLをまとめて生成できます。
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-bold">商品情報</h2>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {productFields.map(([key, label, placeholder]) => (
+                  <label key={key} className="grid gap-1.5">
+                    <span className="text-sm font-bold text-stone-700">{label}</span>
+                    <input
+                      value={String(form[key])}
+                      onChange={(event) => updateField(key, event.target.value)}
+                      placeholder={placeholder}
+                      className="h-11 rounded-lg border border-stone-300 bg-white px-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                    />
+                  </label>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-bold">商品説明</h2>
+              <label className="mt-4 grid gap-1.5">
+                <span className="text-sm font-bold text-stone-700">商品説明文</span>
+                <textarea
+                  value={form.description}
+                  onChange={(event) => updateField("description", event.target.value)}
+                  placeholder="商品の特徴、着用感、コーディネート提案などを入力してください。"
+                  className="min-h-44 resize-y rounded-lg border border-stone-300 bg-white px-3 py-3 text-sm leading-7 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                />
+              </label>
+            </section>
+
+            <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <Image className="h-5 w-5 text-stone-500" aria-hidden="true" />
+                <h2 className="text-lg font-bold">画像設定</h2>
+              </div>
+              <div className="grid gap-4">
+                <label className="grid gap-1.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-bold text-stone-700">楽天用画像URL</span>
+                    <span className="text-xs font-bold text-stone-500">{filledRakutenImageCount}/20</span>
+                  </div>
+                  <textarea
+                    value={form.rakutenImageUrls.join("\n").replace(/\n+$/, "")}
+                    onChange={(event) => updateImageUrls("rakutenImageUrls", event.target.value)}
+                    placeholder="https://image.rakuten.co.jp/shop-name/cabinet/item/item-1.jpg"
+                    className="min-h-36 resize-y rounded-lg border border-stone-300 bg-white px-3 py-3 font-mono text-xs leading-6 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  />
+                  <span className="text-xs font-medium text-stone-500">改行区切り。楽天PC・楽天スマホ用HTMLで使用します。</span>
+                </label>
+
+                <label className="grid gap-1.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-bold text-stone-700">Yahoo用画像URL</span>
+                    <span className="text-xs font-bold text-stone-500">{filledYahooImageCount}/20</span>
+                  </div>
+                  <textarea
+                    value={form.yahooImageUrls.join("\n").replace(/\n+$/, "")}
+                    onChange={(event) => updateImageUrls("yahooImageUrls", event.target.value)}
+                    placeholder="https://shopping.c.yimg.jp/lib/shop-name/item-1.jpg"
+                    className="min-h-36 resize-y rounded-lg border border-stone-300 bg-white px-3 py-3 font-mono text-xs leading-6 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  />
+                  <span className="text-xs font-medium text-stone-500">改行区切り。Yahoo! PC・Yahoo! スマホ用HTMLで使用します。</span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleGenerateYahooUrls}
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                >
+                  <Download className="h-4 w-4 rotate-[-90deg]" aria-hidden="true" />
+                  楽天URLからYahoo用URLを生成
+                </button>
+
+                <p className="rounded-lg border border-[#eadfce] bg-[#fbf8f1] px-3 py-2 text-sm font-medium text-stone-600">
+                  選択したモールに応じた画像URLを使用します。
+                </p>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <Settings2 className="h-5 w-5 text-stone-500" aria-hidden="true" />
+                <h2 className="text-lg font-bold">店舗共通画像設定</h2>
+              </div>
+
+              <div className="grid gap-4">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {bannerToggles.map(([key, label]) => (
+                    <label
+                      key={key}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3 text-sm font-bold text-stone-700"
+                    >
+                      <span>{label}</span>
+                      <input
+                        type="checkbox"
+                        checked={form[key]}
+                        onChange={(event) => updateToggle(key, event.target.checked)}
+                        className="h-5 w-5 accent-emerald-700"
+                      />
+                    </label>
+                  ))}
+                </div>
+
+                <div className="grid gap-4">
+                  {bannerFields.map((field) => (
+                    <label key={field.key} className="grid gap-1.5">
+                      <span className="text-sm font-bold text-stone-700">{field.label}</span>
+                      <input
+                        value={form[field.key]}
+                        onChange={(event) => updateField(field.key, event.target.value)}
+                        placeholder={field.placeholder}
+                        className="h-11 rounded-lg border border-stone-300 bg-white px-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                      />
+                      {[
+                        "rakutenLineBannerUrl",
+                        "rakutenStockNoticeUrl",
+                        "rakutenPolicyUrl",
+                      ].includes(field.key) && cannotConvertRakutenUrl(form[field.key]) ? (
+                        <span className="text-xs font-bold text-red-600">変換できないURLです</span>
+                      ) : null}
+                    </label>
+                  ))}
+                </div>
+
+                <p className="rounded-lg border border-[#eadfce] bg-[#fbf8f1] px-3 py-2 text-sm font-medium text-stone-600">
+                  空欄のURL、またはOFFの共通画像は出力HTMLに挿入されません。
+                </p>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setIsAdvancedOpen((current) => !current)}
+                className="flex w-full items-center justify-between gap-3 text-left"
+              >
+                <span className="flex items-center gap-2 text-lg font-bold">
+                  <Settings2 className="h-5 w-5 text-stone-500" aria-hidden="true" />
+                  詳細コピー設定
+                </span>
+                <span className="text-sm font-bold text-emerald-700">
+                  {isAdvancedOpen ? "閉じる" : "開く"}
+                </span>
+              </button>
+              {isAdvancedOpen ? (
+                <div className="mt-4 grid gap-4">
+                  <button
+                    type="button"
+                    onClick={handleAutoCopy}
+                    className="inline-flex w-fit items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                  >
+                    <FileText className="h-4 w-4" aria-hidden="true" />
+                    雑誌風コピーを自動入力
+                  </button>
+                  <div className="grid gap-4">
+                    {advancedCopyFields.map((field) => (
+                      <label key={field.key} className="grid gap-1.5">
+                        <span className="text-sm font-bold text-stone-700">{field.label}</span>
+                        {field.multiline ? (
+                          <textarea
+                            value={form[field.key]}
+                            onChange={(event) => updateField(field.key, event.target.value)}
+                            className="min-h-24 resize-y rounded-lg border border-stone-300 bg-white px-3 py-3 text-sm leading-6 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                          />
+                        ) : (
+                          <input
+                            value={form[field.key]}
+                            onChange={(event) => updateField(field.key, event.target.value)}
+                            placeholder={field.placeholder}
+                            className="h-11 rounded-lg border border-stone-300 bg-white px-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                          />
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
+            <div className="flex items-start gap-2 rounded-lg border border-[#eadfce] bg-[#fbf8f1] px-4 py-3 text-sm font-bold text-stone-700">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />
+              Yahooスマホ：center / font未使用　楽天スマホ：style未使用
+            </div>
+          </form>
+
+          <section className="grid content-start gap-5">
+            <article className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-5 w-5 text-stone-500" aria-hidden="true" />
+                    <h2 className="text-lg font-bold">プレビュー</h2>
+                  </div>
+                  <p className="mt-1 text-sm font-medium text-stone-500">
+                    {currentPreviewOutput.previewTitle}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex rounded-lg border border-stone-200 bg-stone-50 p-1">
+                    {outputs.map((output) => {
+                      const isMobile = output.key === "rakutenMobile" || output.key === "yahooMobile";
+                      const Icon = isMobile ? Smartphone : Monitor;
+                      return (
+                        <button
+                          key={output.key}
+                          type="button"
+                          onClick={() => {
+                            setActivePreview(output.key);
+                            setActiveMall(output.key === "rakutenPc" || output.key === "rakutenMobile" ? "rakuten" : "yahoo");
+                          }}
+                          className={[
+                            "inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2",
+                            activePreview === output.key
+                              ? "bg-white text-emerald-800 shadow-sm"
+                              : "text-stone-600 hover:bg-white",
+                          ].join(" ")}
+                        >
+                          <Icon className="h-4 w-4" aria-hidden="true" />
+                          {output.title.replace("用HTML", "")}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewExpanded(true)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                  >
+                    <Maximize2 className="h-4 w-4" aria-hidden="true" />
+                    拡大表示
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-stone-200 bg-[#faf8f4] p-3 sm:p-5">
+                {renderPreview()}
+              </div>
+
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsHtmlOpen((current) => !current)}
+                  className="text-sm font-bold text-emerald-700 underline-offset-4 hover:underline"
+                >
+                  {isHtmlOpen ? "HTMLを閉じる" : "HTMLを表示"}
+                </button>
+                {isHtmlOpen ? (
+                  <textarea
+                    readOnly
+                    value={generated[activePreview]}
+                    placeholder="一括生成後に、選択中プレビューのHTMLを確認できます。"
+                    className="mt-3 h-56 w-full resize-y rounded-lg border border-stone-300 bg-stone-950 px-3 py-3 font-mono text-xs leading-relaxed text-stone-50 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  />
+                ) : null}
+              </div>
+            </article>
+
+            <article className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-lg font-bold">出力結果（4種類まとめて生成されます）</h2>
+                {hasGeneratedHtml ? (
+                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-700">
+                    <CheckCircle className="h-4 w-4" aria-hidden="true" />
+                    生成済み
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="grid gap-3">
+                {outputs.map((output, index) => (
+                  <div
+                    key={output.key}
+                    className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-4 lg:grid-cols-[1fr_auto] lg:items-center"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-stone-600 shadow-sm">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <h3 className="font-bold text-stone-900">{output.title}</h3>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <span
+                            className={[
+                              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold",
+                              hasGeneratedHtml
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-stone-200 text-stone-600",
+                            ].join(" ")}
+                          >
+                            <CheckCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                            {hasGeneratedHtml ? "生成完了" : "未生成"}
+                          </span>
+                          {outputWarnings[output.key] ? (
+                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">
+                              {outputWarnings[output.key]}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 lg:justify-end">
+                      <button
+                        type="button"
+                        onClick={() => void handleCopy(output.key)}
+                        disabled={!hasGeneratedHtml}
+                        className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Copy className="h-4 w-4" aria-hidden="true" />
+                        {copiedKey === output.key ? "コピー済み" : "コピー"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(output.key)}
+                        disabled={!hasGeneratedHtml}
+                        className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Download className="h-4 w-4" aria-hidden="true" />
+                        ダウンロード
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+              <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
+                <button
+                  type="submit"
+                  form="ec-html-generator-form"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 py-3 text-base font-bold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                >
+                  <Rocket className="h-5 w-5" aria-hidden="true" />
+                  楽天・Yahoo用HTMLを一括生成
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleCopyAll()}
+                  disabled={!hasGeneratedHtml}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Copy className="h-4 w-4" aria-hidden="true" />
+                  {copiedAll ? "コピー済み" : "コピー（すべて）"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadAll}
+                  disabled={!hasGeneratedHtml}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Download className="h-4 w-4" aria-hidden="true" />
+                  ダウンロード（すべて）
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearForm}
+                className="mt-3 text-sm font-bold text-stone-500 underline-offset-4 hover:text-stone-800 hover:underline"
+              >
+                入力内容をクリア
+              </button>
+            </article>
+          </section>
+        </section>
+      </div>
+
+      {isPreviewExpanded ? (
+        <div className="fixed inset-0 z-50 bg-black/55 p-4 sm:p-6">
+          <div className="mx-auto flex h-full max-w-6xl flex-col rounded-lg bg-white shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-stone-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-bold">拡大表示</h2>
+                <p className="text-sm font-medium text-stone-500">
+                  {currentPreviewOutput.previewTitle}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPreviewExpanded(false)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-stone-300 bg-white text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                aria-label="閉じる"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[#faf8f4] p-4 sm:p-6">
+              {renderPreview(true)}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </main>
+  );
+}
+
+
+
+
+
