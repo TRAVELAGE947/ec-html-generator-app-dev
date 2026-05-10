@@ -147,6 +147,22 @@ const contentPageBlockLabels: Record<ContentBlockKey, string> = {
   notice: "注意事項",
   storeCommonImages: "店舗共通画像",
 };
+const hiddenOutputPageBlockKeys = new Set<PageBlockKey>(["catchCopy", "extraDescription"]);
+const pageBlockNumberBadgeColors = [
+  "border-[#E8D9BF] bg-[#F8F0E2] text-[#7A5C2E]",
+  "border-[#F3CCD8] bg-[#FDF1F5] text-[#8A3E5C]",
+  "border-[#DCD2F0] bg-[#F6F1FE] text-[#5F4A82]",
+  "border-[#C8E6D8] bg-[#EFFAF4] text-[#2F6D55]",
+  "border-[#C9DDF3] bg-[#EFF6FF] text-[#315D87]",
+  "border-[#F1D5B8] bg-[#FFF4E8] text-[#86542A]",
+  "border-[#EDC8CE] bg-[#FFF1F3] text-[#894653]",
+  "border-[#D7E5C9] bg-[#F4FAED] text-[#536D34]",
+  "border-[#D8C8E8] bg-[#F7F0FB] text-[#674783]",
+  "border-[#E5D7BE] bg-[#FAF3E8] text-[#705B38]",
+  "border-[#CAE5CE] bg-[#F0FAF1] text-[#386C42]",
+  "border-[#DAD7D2] bg-[#F4F2EF] text-[#625B54]",
+  "border-[#E9DFC0] bg-[#FFF8E8] text-[#7A6331]",
+];
 
 const initialForm: ProductForm = {
   productName: "",
@@ -241,6 +257,10 @@ function pageBlockLabel(value: PageBlockKey): string {
   }
 
   return contentPageBlockLabels[value];
+}
+
+function isVisibleOutputPageBlock(value: PageBlockKey): boolean {
+  return !hiddenOutputPageBlockKeys.has(value);
 }
 
 function normalizePageBlockOrder(value: unknown): PageBlockKey[] {
@@ -639,6 +659,7 @@ function orderedPageBlocks(
   blocks: Partial<Record<PageBlockKey, string>>,
 ): string {
   return normalizePageBlockOrder(blockOrder)
+    .filter(isVisibleOutputPageBlock)
     .map((key) => blocks[key])
     .filter(Boolean)
     .join("\n");
@@ -954,7 +975,50 @@ function yahooMobileBannerHtml(banners: BannerUrls): string {
     .join("\n");
 }
 
-function generateSimpleHtml(form: ProductForm, imageUrls: string[], banners: BannerUrls): string {
+function yahooPcProductDescriptionBlock(form: ProductForm): string {
+  if (!form.description.trim()) {
+    return "";
+  }
+
+  return [
+    pcSectionHeading("商品説明"),
+    pcTextBlock(form.description, "#ffffff", "left"),
+  ].join("\n");
+}
+
+function yahooPcPointBlock(form: ProductForm): string {
+  return [
+    pcSectionHeading("POINT", form.pointLead),
+    pcPointTable(form),
+  ].filter(Boolean).join("\n");
+}
+
+function yahooPcNoticeBlock(form: ProductForm): string {
+  if (!form.notice.trim()) {
+    return "";
+  }
+
+  return [
+    pcSectionHeading("注意事項"),
+    '<table width="96%" border="0" cellspacing="0" cellpadding="14" bgcolor="#fafafa">',
+    "<tr>",
+    '<td align="left">',
+    `<font size="2" color="#777777">${linesToHtml(form.notice.trim())}</font>`,
+    "</td>",
+    "</tr>",
+    "</table>",
+    "<br><br>",
+  ].join("\n");
+}
+
+function generateSimpleHtml(
+  form: ProductForm,
+  imageUrls: string[],
+  banners: BannerUrls,
+  productDescriptionBlock = textBlock("商品説明", form.description, "96%"),
+  pointBlock = simplePointBlock(form, "96%"),
+  noticeBlock = textBlock("注意事項", form.notice, "96%"),
+): string {
   const imageBlocks = imagePageBlockOrder.reduce<Partial<Record<PageBlockKey, string>>>(
     (acc, key, index) => {
       acc[key] = simpleImageAt(imageUrls, index);
@@ -964,13 +1028,11 @@ function generateSimpleHtml(form: ProductForm, imageUrls: string[], banners: Ban
   );
   const blocks: Partial<Record<PageBlockKey, string>> = {
     ...imageBlocks,
-    catchCopy: textBlock("キャッチコピー", form.leadCopy, "96%"),
-    productDescription: textBlock("商品説明", form.description, "96%"),
-    point: simplePointBlock(form, "96%"),
-    extraDescription: textBlock("補足説明", form.extraDescription, "96%"),
+    productDescription: productDescriptionBlock,
+    point: pointBlock,
     color: simpleColorBlock(form, "96%"),
     itemDetail: specTable(form, "96%"),
-    notice: textBlock("注意事項", form.notice, "96%"),
+    notice: noticeBlock,
     storeCommonImages: bannerGroupHtml(banners),
   };
 
@@ -992,6 +1054,29 @@ function generateRakutenPcHtml(form: ProductForm, banners: BannerUrls): string {
   const imageUrls = form.rakutenImageUrls;
   const titleMeta = [form.brand.trim(), form.country.trim()].filter(Boolean).join(" / ");
   const colorText = form.colors.trim();
+  const colorDescription = form.colorDescription.trim();
+  const productDescriptionBlock = form.description.trim()
+    ? [
+        pcSectionHeading("商品説明"),
+        pcTextBlock(form.description, "#ffffff", "left"),
+      ].join("\n")
+    : "";
+  const colorBlock = colorText || colorDescription
+    ? [
+        pcSectionHeading("COLOR", colorText),
+        pcTextBlock(form.colorDescription, "#ffffff", "left"),
+      ].filter(Boolean).join("\n")
+    : "";
+  const itemDetailBody = pcSpecTable(form);
+  const itemDetailBlock = itemDetailBody
+    ? [
+        pcSectionHeading("商品詳細"),
+        itemDetailBody,
+      ].join("\n")
+    : "";
+  const closingCopyBlock = form.closingCopy.trim()
+    ? pcTextBlock(form.closingCopy, "#f7f4ef", "center")
+    : "";
   const titleBlock = form.productName.trim() || titleMeta
     ? [
         '<table width="96%" border="0" cellspacing="0" cellpadding="18" bgcolor="#ffffff">',
@@ -1009,6 +1094,7 @@ function generateRakutenPcHtml(form: ProductForm, banners: BannerUrls): string {
     : "";
   const noticeBlock = form.notice.trim()
     ? [
+        pcSectionHeading("注意事項"),
         '<table width="96%" border="0" cellspacing="0" cellpadding="14" bgcolor="#fafafa">',
         "<tr>",
         '<td align="left">',
@@ -1037,20 +1123,13 @@ function generateRakutenPcHtml(form: ProductForm, banners: BannerUrls): string {
   );
   const blocks: Partial<Record<PageBlockKey, string>> = {
     ...imageBlocks,
-    catchCopy: pcTextBlock(form.leadCopy, "#f7f4ef", "center"),
-    productDescription: pcTextBlock(form.description, "#ffffff", "left"),
+    productDescription: productDescriptionBlock,
     point: [
       pcSectionHeading("POINT", form.pointLead),
       pcPointTable(form),
     ].filter(Boolean).join("\n"),
-    extraDescription: pcTextBlock(form.extraDescription, "#fafafa", "left"),
-    color: [
-      colorText ? pcSectionHeading("COLOR", colorText) : "",
-      pcTextBlock(form.colorDescription, "#ffffff", "left"),
-    ].filter(Boolean).join("\n"),
-    itemDetail: [pcSectionHeading("ITEM DETAIL"), pcSpecTable(form), pcTextBlock(form.closingCopy, "#f7f4ef", "center")]
-      .filter(Boolean)
-      .join("\n"),
+    color: colorBlock,
+    itemDetail: [itemDetailBlock, closingCopyBlock].filter(Boolean).join("\n"),
     notice: noticeBlock,
     storeCommonImages: bannerGroupHtml(banners, pcImageHtml),
   };
@@ -1093,10 +1172,8 @@ function generateYahooMobileHtml(form: ProductForm, banners: BannerUrls): string
   );
   const blocks: Partial<Record<PageBlockKey, string>> = {
     ...imageBlocks,
-    catchCopy: yahooMobileTextBlock("キャッチコピー", form.leadCopy),
     productDescription: yahooMobileTextBlock("商品説明", form.description),
     point: yahooMobilePointTable(form),
-    extraDescription: yahooMobileTextBlock("補足説明", form.extraDescription),
     color: yahooMobileColorBlock(form),
     itemDetail: itemDetailBlock,
     notice: yahooMobileTextBlock("注意事項", form.notice),
@@ -1143,7 +1220,14 @@ function generateHtml(form: ProductForm): GeneratedHtml {
   return {
     rakutenMobile: generateSimpleHtml(form, form.rakutenImageUrls, rakutenBanners),
     rakutenPc: generateRakutenPcHtml(form, rakutenBanners),
-    yahoo: generateSimpleHtml(form, form.yahooImageUrls, yahooBanners),
+    yahoo: generateSimpleHtml(
+      form,
+      form.yahooImageUrls,
+      yahooBanners,
+      yahooPcProductDescriptionBlock(form),
+      yahooPcPointBlock(form),
+      yahooPcNoticeBlock(form),
+    ),
     yahooMobile: generateYahooMobileHtml(form, yahooBanners),
   };
 }
@@ -2008,7 +2092,8 @@ export function EcHtmlGenerator() {
     visibleYahooImageRowCount,
   );
   const visiblePageBlockItems = pageBlockItems.filter((blockKey) =>
-    !isImageBlockKey(blockKey) || imageBlockIndex(blockKey) < visiblePageBlockImageCount,
+    isVisibleOutputPageBlock(blockKey)
+      && (!isImageBlockKey(blockKey) || imageBlockIndex(blockKey) < visiblePageBlockImageCount),
   );
 
   const renderPreview = (expanded = false) => {
@@ -2022,7 +2107,7 @@ export function EcHtmlGenerator() {
         className="mx-auto bg-white"
         style={{ width: previewWidth, maxWidth: "100%" }}
       >
-        <div className="overflow-hidden rounded-lg border border-[#EADFCF] bg-white p-3">
+        <div className="overflow-hidden rounded-2xl border border-[#E8E1D8] bg-white p-3 shadow-sm">
           {previewHtml ? (
             <iframe
               title={currentPreviewOutput.previewTitle}
@@ -2031,7 +2116,7 @@ export function EcHtmlGenerator() {
               style={{ height: previewHeight }}
             />
           ) : (
-            <div className="flex min-h-56 w-full items-center justify-center rounded-md border border-dashed border-[#EADFCF] bg-[#FAF7F0] px-4 text-center text-sm font-bold text-stone-500">
+            <div className="flex min-h-56 w-full items-center justify-center rounded-xl border border-dashed border-[#D8D1C7] bg-[#FAF8F4] px-4 text-center text-sm font-bold text-[#6F6A63]">
               入力内容を追加すると、ここにHTMLプレビューが表示されます。
             </div>
           )}
@@ -2041,60 +2126,60 @@ export function EcHtmlGenerator() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FAF7F0] px-4 py-6 text-stone-900 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[#F8F6F2] px-4 py-6 text-[#2F2A24] sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-[1500px] flex-col gap-6">
-        <header className="rounded-lg border border-[#EADFCF] bg-white px-5 py-6 shadow-sm sm:px-7">
+        <header className="rounded-2xl border border-[#E8E1D8] bg-white px-5 py-6 shadow-[0_18px_50px_rgba(47,42,36,0.06)] sm:px-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#BFDBFE] bg-[#EEF6FF] px-3 py-1 text-sm font-bold text-sky-800">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#D8D1C7] bg-[#FAF8F4] px-3 py-1 text-sm font-bold text-[#0F766E]">
                 <FileText className="h-4 w-4" aria-hidden="true" />
                 EC HTML Generator
               </div>
-              <h1 className="mt-3 text-3xl font-bold tracking-normal text-stone-950 sm:text-4xl">
+              <h1 className="mt-3 text-3xl font-bold tracking-normal text-[#2F2A24] sm:text-4xl">
                 EC HTML Generator
               </h1>
-              <p className="mt-2 text-base font-medium text-stone-600">
+              <p className="mt-2 text-base font-medium text-[#6F6A63]">
                 楽天市場・Yahoo!ショッピング対応 商品ページHTML作成ツール
               </p>
             </div>
-            <div className="rounded-lg border border-emerald-200 bg-[#ECFDF5] px-4 py-3 text-sm text-emerald-900 shadow-sm">
+            <div className="rounded-xl border border-[#BFE6D8] bg-[#F0FBF6] px-4 py-3 text-sm text-[#0F766E] shadow-sm">
               <p className="font-bold">
                 このブラウザに現在の下書きを自動保存中
                 {lastSavedAt ? `　最終保存：${lastSavedAt}` : ""}
               </p>
-              <p className="mt-1 text-xs font-medium leading-5 text-emerald-800">
+              <p className="mt-1 text-xs font-medium leading-5 text-[#357F72]">
                 現在編集中の商品データを1件だけ保存します。同じPC・同じブラウザで開くと自動復元されます。
               </p>
             </div>
           </div>
 
-          <div className="mt-5 rounded-lg border border-emerald-100 bg-[#ECFDF5] p-3 shadow-sm">
-            <div className="flex flex-wrap gap-2">
+          <div className="mt-5 rounded-xl border border-[#E8E1D8] bg-[#FAF8F4] p-3 shadow-sm">
+            <div className="flex flex-wrap gap-2.5">
               <button
                 type="button"
                 onClick={handleSaveDraft}
-                className="inline-flex items-center justify-center rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                className="inline-flex items-center justify-center rounded-lg bg-[#047857] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#0F766E] focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2"
               >
                 下書き保存
               </button>
               <button
                 type="button"
                 onClick={() => setIsDraftListOpen((current) => !current)}
-                className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-white px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                className="inline-flex items-center justify-center rounded-lg border border-[#D8D1C7] bg-white px-4 py-2 text-sm font-bold text-[#2F2A24] transition hover:bg-[#FAF8F4] focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2"
               >
                 保存済み下書き一覧
               </button>
               <button
                 type="button"
                 onClick={handleClearImageSettings}
-                className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-white px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                className="inline-flex items-center justify-center rounded-lg border border-[#E8E1D8] bg-white/80 px-4 py-2 text-sm font-bold text-[#6F6A63] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2"
               >
                 画像設定をクリア
               </button>
               <button
                 type="button"
                 onClick={handleClearDetailCopySettings}
-                className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-white px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                className="inline-flex items-center justify-center rounded-lg border border-[#E8E1D8] bg-white/80 px-4 py-2 text-sm font-bold text-[#6F6A63] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2"
               >
                 詳細コピー設定をクリア
               </button>
@@ -2108,16 +2193,16 @@ export function EcHtmlGenerator() {
             </div>
 
             {draftMessage ? (
-              <p className="mt-3 rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm font-bold text-emerald-800">
+              <p className="mt-3 rounded-lg border border-[#BFE6D8] bg-white px-3 py-2 text-sm font-bold text-[#0F766E]">
                 {draftMessage}
               </p>
             ) : null}
 
             {isDraftListOpen ? (
-              <div className="mt-3 grid gap-3 rounded-lg border border-emerald-100 bg-white p-3">
+              <div className="mt-3 grid gap-3 rounded-xl border border-[#E8E1D8] bg-white p-3 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-bold text-stone-800">保存済み下書き一覧</h3>
-                  <span className="text-xs font-bold text-stone-500">
+                  <h3 className="text-sm font-bold text-[#2F2A24]">保存済み下書き一覧</h3>
+                  <span className="text-xs font-bold text-[#6F6A63]">
                     {savedDrafts.length}/{maxDraftCount}
                   </span>
                 </div>
@@ -2125,11 +2210,11 @@ export function EcHtmlGenerator() {
                   savedDrafts.map((draft) => (
                     <div
                       key={draft.id}
-                      className="grid gap-3 rounded-lg border border-emerald-100 bg-[#ECFDF5] p-3 sm:grid-cols-[1fr_auto] sm:items-center"
+                      className="grid gap-3 rounded-lg border border-[#E8E1D8] bg-[#FAF8F4] p-3 sm:grid-cols-[1fr_auto] sm:items-center"
                     >
                       <div>
-                        <p className="font-bold text-stone-900">{draft.name}</p>
-                        <p className="mt-1 text-xs font-medium text-stone-500">
+                        <p className="font-bold text-[#2F2A24]">{draft.name}</p>
+                        <p className="mt-1 text-xs font-medium text-[#6F6A63]">
                           保存日時：{formatDraftDate(draft.updatedAt) || "不明"}
                         </p>
                       </div>
@@ -2137,7 +2222,7 @@ export function EcHtmlGenerator() {
                         <button
                           type="button"
                           onClick={() => handleLoadDraft(draft)}
-                          className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                          className="inline-flex items-center justify-center rounded-lg border border-[#D8D1C7] bg-white px-3 py-2 text-sm font-bold text-[#0F766E] transition hover:bg-[#F0FBF6] focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2"
                         >
                           呼び出し
                         </button>
@@ -2170,15 +2255,15 @@ export function EcHtmlGenerator() {
               handleGenerate();
             }}
           >
-            <section className="rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] p-5 shadow-sm xl:order-1 xl:h-full">
+            <section className="rounded-2xl border border-[#E8E1D8] bg-white p-5 shadow-[0_12px_34px_rgba(47,42,36,0.05)] xl:order-1 xl:h-full">
               <div className="mb-4 flex items-center gap-2">
-                <Settings2 className="h-5 w-5 text-sky-700" aria-hidden="true" />
-                <h2 className="text-lg font-bold text-sky-950">出力設定</h2>
+                <Settings2 className="h-5 w-5 text-[#1D4ED8]" aria-hidden="true" />
+                <h2 className="text-lg font-bold text-[#2F2A24]">出力設定</h2>
               </div>
 
               <div className="grid gap-5">
                 <div>
-                  <p className="mb-2 text-sm font-bold text-stone-700">出力モール</p>
+                  <p className="mb-2 text-sm font-bold text-[#6F6A63]">出力モール</p>
                   <div className="grid grid-cols-2 gap-2">
                     {[
                       ["rakuten", "R", "楽天市場"],
@@ -2189,13 +2274,13 @@ export function EcHtmlGenerator() {
                         type="button"
                         onClick={() => selectMall(mall as "rakuten" | "yahoo")}
                         className={[
-                          "flex items-center gap-2 rounded-lg border px-3 py-3 text-left text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2",
+                          "flex items-center gap-2 rounded-xl border px-3 py-3 text-left text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2",
                           activeMall === mall
-                            ? "border-sky-400 bg-white text-sky-900 shadow-sm"
-                            : "border-sky-100 bg-white/80 text-stone-700 hover:bg-white",
+                            ? "border-[#9BC8C0] bg-[#F0FBF6] text-[#0F766E] shadow-sm"
+                            : "border-[#E8E1D8] bg-white text-[#2F2A24] hover:bg-[#FAF8F4]",
                         ].join(" ")}
                       >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-xs font-bold text-red-600 shadow-sm">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-xs font-bold text-red-600 shadow-sm ring-1 ring-[#E8E1D8]">
                           {badge}
                         </span>
                         {label}
@@ -2205,31 +2290,31 @@ export function EcHtmlGenerator() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-sm font-bold text-stone-700">生成対象</p>
+                  <p className="mb-2 text-sm font-bold text-[#6F6A63]">生成対象</p>
                   <div className="flex flex-wrap gap-2">
                     {outputs.map((output) => (
                       <span
                         key={output.key}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-white px-3 py-1.5 text-sm font-bold text-sky-900"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-[#E8E1D8] bg-[#FAF8F4] px-3 py-1.5 text-sm font-bold text-[#2F2A24]"
                       >
-                        <CheckCircle className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                        <CheckCircle className="h-4 w-4 text-[#0F766E]" aria-hidden="true" />
                         {output.title.replace("用HTML", "")}
                       </span>
                     ))}
                   </div>
-                  <p className="mt-3 text-sm leading-6 text-stone-600">
+                  <p className="mt-3 text-sm leading-6 text-[#6F6A63]">
                     1回の入力で、楽天PC・楽天スマホ・Yahoo! PC・Yahoo! スマホ用HTMLをまとめて生成できます。
                   </p>
                 </div>
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#E9D5FF] bg-[#F5F3FF] p-4 shadow-sm xl:order-4 xl:flex xl:h-[760px] xl:flex-col">
+            <section className="rounded-2xl border border-[#E8E1D8] bg-white p-4 shadow-[0_12px_34px_rgba(47,42,36,0.05)] xl:order-4 xl:flex xl:h-[760px] xl:flex-col">
               <div className="mb-3 flex items-center gap-2">
-                <Settings2 className="h-5 w-5 text-violet-700" aria-hidden="true" />
-                <h2 className="text-lg font-bold text-violet-950">表示順設定</h2>
+                <Settings2 className="h-5 w-5 text-[#6D5A8D]" aria-hidden="true" />
+                <h2 className="text-lg font-bold text-[#2F2A24]">表示順設定</h2>
               </div>
-              <p className="rounded-lg border border-violet-100 bg-white px-3 py-2 text-sm font-medium leading-5 text-stone-600">
+              <p className="rounded-xl border border-[#E8E1D8] bg-[#FAF8F4] px-3 py-2 text-sm font-medium leading-5 text-[#6F6A63]">
                 商品ページ内の表示ブロック順を変更できます。変更後に一括生成すると、4種類のHTMLに反映されます。
               </p>
 
@@ -2237,12 +2322,17 @@ export function EcHtmlGenerator() {
                 {visiblePageBlockItems.map((blockKey, index) => (
                   <div
                     key={blockKey}
-                    className="grid gap-1.5 rounded-lg border border-violet-100 bg-white p-2 shadow-sm sm:grid-cols-[auto_1fr_auto] sm:items-center"
+                    className="grid gap-1.5 rounded-xl border border-[#E8E1D8] bg-white p-2 shadow-sm sm:grid-cols-[auto_1fr_auto] sm:items-center"
                   >
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F5F3FF] text-xs font-bold text-violet-800">
+                    <span
+                      className={[
+                        "flex h-6 w-6 items-center justify-center rounded-full border text-xs font-bold",
+                        pageBlockNumberBadgeColors[index % pageBlockNumberBadgeColors.length],
+                      ].join(" ")}
+                    >
                       {index + 1}
                     </span>
-                    <span className="text-sm font-bold text-stone-800">
+                    <span className="text-sm font-bold text-[#2F2A24]">
                       {pageBlockLabel(blockKey)}
                     </span>
                     <div className="flex flex-wrap gap-2 sm:justify-end">
@@ -2256,7 +2346,7 @@ export function EcHtmlGenerator() {
                           )
                         }
                         disabled={index === 0}
-                        className="rounded-md border border-violet-100 bg-white px-2 py-0.5 text-xs font-bold text-stone-600 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-md border border-[#E8E1D8] bg-white px-2 py-0.5 text-xs font-bold text-[#6F6A63] transition hover:bg-[#FAF8F4] disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         上へ
                       </button>
@@ -2270,7 +2360,7 @@ export function EcHtmlGenerator() {
                           )
                         }
                         disabled={index === visiblePageBlockItems.length - 1}
-                        className="rounded-md border border-violet-100 bg-white px-2 py-0.5 text-xs font-bold text-stone-600 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-md border border-[#E8E1D8] bg-white px-2 py-0.5 text-xs font-bold text-[#6F6A63] transition hover:bg-[#FAF8F4] disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         下へ
                       </button>
@@ -2280,72 +2370,72 @@ export function EcHtmlGenerator() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#BBF7D0] bg-[#F0FDF4] p-5 shadow-sm xl:order-2 xl:h-full">
-              <h2 className="text-lg font-bold text-emerald-950">商品情報</h2>
+            <section className="rounded-2xl border border-[#E8E1D8] bg-white p-5 shadow-[0_12px_34px_rgba(47,42,36,0.05)] xl:order-2 xl:h-full">
+              <h2 className="text-lg font-bold text-[#2F2A24]">商品情報</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 {productFields.map(([key, label, placeholder]) => (
                   <label key={key} className="grid gap-1.5">
-                    <span className="text-sm font-bold text-stone-700">{label}</span>
+                    <span className="text-sm font-bold text-[#6F6A63]">{label}</span>
                     <input
                       value={String(form[key])}
                       onChange={(event) => updateField(key, event.target.value)}
                       placeholder={placeholder}
-                      className="h-11 rounded-lg border border-emerald-100 bg-white px-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                      className="h-11 rounded-xl border border-[#E8E1D8] bg-white px-3 text-sm outline-none transition placeholder:text-[#B6AEA4] focus:border-[#0F766E] focus:ring-2 focus:ring-[#D7EFE8]"
                     />
                   </label>
                 ))}
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#FED7AA] bg-[#FFF7ED] p-5 shadow-sm xl:order-3 xl:flex xl:h-full xl:flex-col">
-              <h2 className="text-lg font-bold text-orange-950">商品説明</h2>
+            <section className="rounded-2xl border border-[#E8E1D8] bg-white p-5 shadow-[0_12px_34px_rgba(47,42,36,0.05)] xl:order-3 xl:flex xl:h-full xl:flex-col">
+              <h2 className="text-lg font-bold text-[#2F2A24]">商品説明</h2>
               <label className="mt-4 grid gap-1.5 xl:flex xl:flex-1 xl:flex-col">
-                <span className="text-sm font-bold text-stone-700">商品説明文</span>
+                <span className="text-sm font-bold text-[#6F6A63]">商品説明文</span>
                 <textarea
                   value={form.description}
                   onChange={(event) => updateField("description", event.target.value)}
                   placeholder="商品の特徴、着用感、コーディネート提案などを入力してください。"
-                  className="min-h-44 resize-y rounded-lg border border-orange-100 bg-white px-3 py-3 text-sm leading-7 outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-100 xl:flex-1"
+                  className="min-h-44 resize-y rounded-xl border border-[#E8E1D8] bg-white px-3 py-3 text-sm leading-7 outline-none transition placeholder:text-[#B6AEA4] focus:border-[#0F766E] focus:ring-2 focus:ring-[#D7EFE8] xl:flex-1"
                 />
               </label>
             </section>
 
-            <section className="rounded-lg border border-[#FBCFE8] bg-[#FDF2F8] p-5 shadow-sm xl:order-8">
+            <section className="rounded-2xl border border-[#E8E1D8] bg-white p-5 shadow-[0_12px_34px_rgba(47,42,36,0.05)] xl:order-8">
               <div className="mb-4 flex items-center gap-2">
-                <Image className="h-5 w-5 text-rose-700" aria-hidden="true" />
-                <h2 className="text-lg font-bold text-rose-950">楽天画像設定</h2>
+                <Image className="h-5 w-5 text-[#0F766E]" aria-hidden="true" />
+                <h2 className="text-lg font-bold text-[#2F2A24]">楽天画像設定</h2>
               </div>
               <div className="grid gap-4">
                 <button
                   type="button"
                   onClick={handleGenerateYahooUrls}
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#D8D1C7] bg-[#FAF8F4] px-4 py-2 text-sm font-bold text-[#2F2A24] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2"
                 >
                   <Download className="h-4 w-4 rotate-[-90deg]" aria-hidden="true" />
                   楽天URLからYahoo用URLを生成
                 </button>
 
-                <div className="grid gap-3 rounded-lg border border-rose-100 bg-white p-3 shadow-sm">
+                <div className="grid gap-3 rounded-xl border border-[#E8E1D8] bg-[#FAF8F4] p-3 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
-                    <h4 className="text-sm font-bold text-stone-700">楽天用画像URL</h4>
-                    <span className="text-xs font-bold text-stone-500">{filledRakutenImageCount}/20</span>
+                    <h4 className="text-sm font-bold text-[#2F2A24]">楽天用画像URL</h4>
+                    <span className="text-xs font-bold text-[#6F6A63]">{filledRakutenImageCount}/20</span>
                   </div>
                   {visibleRakutenImageUrls.map((url, index) => (
                     <label key={`rakuten-${index}`} className="grid gap-1">
-                      <span className="text-xs font-semibold text-stone-500">
+                      <span className="text-xs font-semibold text-[#6F6A63]">
                         {index === 0 ? "1枚目 メイン画像URL" : `${index + 1}枚目 画像URL`}
                       </span>
                       <input
                         value={url}
                         onChange={(event) => updateRakutenImageUrl(index, event.target.value)}
                         placeholder="https://image.rakuten.co.jp/shop-name/cabinet/item/item-1.jpg"
-                        className="h-10 rounded-lg border border-rose-100 bg-white px-3 font-mono text-xs outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100"
+                        className="h-10 rounded-lg border border-[#E8E1D8] bg-white px-3 font-mono text-xs outline-none transition placeholder:text-[#B6AEA4] focus:border-[#0F766E] focus:ring-2 focus:ring-[#D7EFE8]"
                       />
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           onClick={() => clearImageUrl("rakutenImageUrls", index)}
-                          className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-bold text-red-700"
+                          className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-bold text-red-700 transition hover:bg-red-50"
                         >
                           削除
                         </button>
@@ -2357,84 +2447,84 @@ export function EcHtmlGenerator() {
                       ) : null}
                     </label>
                   ))}
-                  <span className="text-xs font-medium text-stone-500">楽天PC・楽天スマホ用HTMLで使用します。</span>
+                  <span className="text-xs font-medium text-[#6F6A63]">楽天PC・楽天スマホ用HTMLで使用します。</span>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => addImageUrlRow("rakutenImageUrls")}
                   disabled={visibleRakutenImageRowCount >= maxImageUrlCount}
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#D8D1C7] bg-white px-4 py-2 text-sm font-bold text-[#0F766E] transition hover:bg-[#F0FBF6] focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   楽天画像URLを追加
                 </button>
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#FBCFE8] bg-[#FDF2F8] p-5 shadow-sm xl:order-9">
+            <section className="rounded-2xl border border-[#E8E1D8] bg-white p-5 shadow-[0_12px_34px_rgba(47,42,36,0.05)] xl:order-9">
               <div className="mb-4 flex items-center gap-2">
-                <Image className="h-5 w-5 text-rose-700" aria-hidden="true" />
-                <h2 className="text-lg font-bold text-rose-950">Yahoo画像設定</h2>
+                <Image className="h-5 w-5 text-[#0F766E]" aria-hidden="true" />
+                <h2 className="text-lg font-bold text-[#2F2A24]">Yahoo画像設定</h2>
               </div>
               <div className="grid gap-4">
                 <button
                   type="button"
                   onClick={handleGenerateRakutenUrls}
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#D8D1C7] bg-[#FAF8F4] px-4 py-2 text-sm font-bold text-[#2F2A24] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2"
                 >
                   <Download className="h-4 w-4 rotate-90" aria-hidden="true" />
                   Yahoo URLから楽天用URLを生成
                 </button>
 
-                <div className="grid gap-3 rounded-lg border border-rose-100 bg-white p-3 shadow-sm">
+                <div className="grid gap-3 rounded-xl border border-[#E8E1D8] bg-[#FAF8F4] p-3 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
-                    <h4 className="text-sm font-bold text-stone-700">Yahoo用画像URL</h4>
-                    <span className="text-xs font-bold text-stone-500">{filledYahooImageCount}/20</span>
+                    <h4 className="text-sm font-bold text-[#2F2A24]">Yahoo用画像URL</h4>
+                    <span className="text-xs font-bold text-[#6F6A63]">{filledYahooImageCount}/20</span>
                   </div>
                   {visibleYahooImageUrls.map((url, index) => (
                     <label key={`yahoo-${index}`} className="grid gap-1">
-                      <span className="text-xs font-semibold text-stone-500">
+                      <span className="text-xs font-semibold text-[#6F6A63]">
                         {index === 0 ? "1枚目 メイン画像URL" : `${index + 1}枚目 画像URL`}
                       </span>
                       <input
                         value={url}
                         onChange={(event) => updateYahooImageUrl(index, event.target.value)}
                         placeholder="https://shopping.c.yimg.jp/lib/shop-name/item-1.jpg"
-                        className="h-10 rounded-lg border border-rose-100 bg-white px-3 font-mono text-xs outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100"
+                        className="h-10 rounded-lg border border-[#E8E1D8] bg-white px-3 font-mono text-xs outline-none transition placeholder:text-[#B6AEA4] focus:border-[#0F766E] focus:ring-2 focus:ring-[#D7EFE8]"
                       />
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           onClick={() => clearImageUrl("yahooImageUrls", index)}
-                          className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-bold text-red-700"
+                          className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-bold text-red-700 transition hover:bg-red-50"
                         >
                           削除
                         </button>
                       </div>
                     </label>
                   ))}
-                  <span className="text-xs font-medium text-stone-500">Yahoo! PC・Yahoo! スマホ用HTMLで使用します。</span>
+                  <span className="text-xs font-medium text-[#6F6A63]">Yahoo! PC・Yahoo! スマホ用HTMLで使用します。</span>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => addImageUrlRow("yahooImageUrls")}
                   disabled={visibleYahooImageRowCount >= maxImageUrlCount}
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#D8D1C7] bg-white px-4 py-2 text-sm font-bold text-[#0F766E] transition hover:bg-[#F0FBF6] focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Yahoo画像URLを追加
                 </button>
 
-                <p className="rounded-lg border border-rose-100 bg-white px-3 py-2 text-sm font-medium text-stone-600">
+                <p className="rounded-lg border border-[#E8E1D8] bg-[#FAF8F4] px-3 py-2 text-sm font-medium text-[#6F6A63]">
                   選択したモールに応じた画像URLを使用します。
                 </p>
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#DDD6FE] bg-[#F5F3FF] p-5 shadow-sm xl:order-10">
+            <section className="rounded-2xl border border-[#E8E1D8] bg-white p-5 shadow-[0_12px_34px_rgba(47,42,36,0.05)] xl:order-10">
               <div className="mb-4 flex items-center gap-2">
-                <Settings2 className="h-5 w-5 text-violet-700" aria-hidden="true" />
-                <h2 className="text-lg font-bold text-violet-950">店舗共通画像設定</h2>
+                <Settings2 className="h-5 w-5 text-[#6D5A8D]" aria-hidden="true" />
+                <h2 className="text-lg font-bold text-[#2F2A24]">店舗共通画像設定</h2>
               </div>
 
               <div className="grid gap-4">
@@ -2442,14 +2532,14 @@ export function EcHtmlGenerator() {
                   {bannerToggles.map(([key, label]) => (
                     <label
                       key={key}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-violet-100 bg-white px-3 py-3 text-sm font-bold text-stone-700 shadow-sm"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-[#E8E1D8] bg-[#FAF8F4] px-3 py-3 text-sm font-bold text-[#2F2A24] shadow-sm"
                     >
                       <span>{label}</span>
                       <input
                         type="checkbox"
                         checked={form[key]}
                         onChange={(event) => updateToggle(key, event.target.checked)}
-                        className="h-5 w-5 accent-emerald-700"
+                        className="h-5 w-5 accent-[#0F766E]"
                       />
                     </label>
                   ))}
@@ -2458,12 +2548,12 @@ export function EcHtmlGenerator() {
                 <div className="grid gap-4">
                   {bannerFields.map((field) => (
                     <label key={field.key} className="grid gap-1.5">
-                      <span className="text-sm font-bold text-stone-700">{field.label}</span>
+                      <span className="text-sm font-bold text-[#6F6A63]">{field.label}</span>
                       <input
                         value={form[field.key]}
                         onChange={(event) => updateField(field.key, event.target.value)}
                         placeholder={field.placeholder}
-                        className="h-11 rounded-lg border border-violet-100 bg-white px-3 text-sm outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                        className="h-11 rounded-xl border border-[#E8E1D8] bg-white px-3 text-sm outline-none transition placeholder:text-[#B6AEA4] focus:border-[#0F766E] focus:ring-2 focus:ring-[#D7EFE8]"
                       />
                       {[
                         "rakutenLineBannerUrl",
@@ -2476,23 +2566,23 @@ export function EcHtmlGenerator() {
                   ))}
                 </div>
 
-                <p className="rounded-lg border border-violet-100 bg-white px-3 py-2 text-sm font-medium text-stone-600">
+                <p className="rounded-lg border border-[#E8E1D8] bg-[#FAF8F4] px-3 py-2 text-sm font-medium text-[#6F6A63]">
                   空欄のURL、またはOFFの共通画像は出力HTMLに挿入されません。
                 </p>
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#DDD6FE] bg-white p-5 shadow-sm xl:order-11 xl:col-span-3">
+            <section className="rounded-2xl border border-[#E8E1D8] bg-white p-5 shadow-[0_12px_34px_rgba(47,42,36,0.05)] xl:order-11 xl:col-span-3">
               <button
                 type="button"
                 onClick={() => setIsAdvancedOpen((current) => !current)}
                 className="flex w-full items-center justify-between gap-3 text-left"
               >
                 <span className="flex items-center gap-2 text-lg font-bold">
-                  <Settings2 className="h-5 w-5 text-violet-700" aria-hidden="true" />
-                  <span className="text-violet-950">詳細コピー設定</span>
+                  <Settings2 className="h-5 w-5 text-[#6D5A8D]" aria-hidden="true" />
+                  <span className="text-[#2F2A24]">詳細コピー設定</span>
                 </span>
-                <span className="text-sm font-bold text-emerald-700">
+                <span className="text-sm font-bold text-[#0F766E]">
                   {isAdvancedOpen ? "閉じる" : "開く"}
                 </span>
               </button>
@@ -2501,7 +2591,7 @@ export function EcHtmlGenerator() {
                   <button
                     type="button"
                     onClick={handleAutoCopy}
-                    className="inline-flex w-fit items-center gap-2 rounded-lg border border-violet-100 bg-[#F5F3FF] px-4 py-2 text-sm font-bold text-violet-800 transition hover:bg-violet-50 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:ring-offset-2"
+                    className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#D8D1C7] bg-[#FAF8F4] px-4 py-2 text-sm font-bold text-[#2F2A24] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2"
                   >
                     <FileText className="h-4 w-4" aria-hidden="true" />
                     雑誌風コピーを自動入力
@@ -2509,19 +2599,19 @@ export function EcHtmlGenerator() {
                   <div className="grid gap-4">
                     {advancedCopyFields.map((field) => (
                       <label key={field.key} className="grid gap-1.5">
-                        <span className="text-sm font-bold text-stone-700">{field.label}</span>
+                        <span className="text-sm font-bold text-[#6F6A63]">{field.label}</span>
                         {field.multiline ? (
                           <textarea
                             value={form[field.key]}
                             onChange={(event) => updateField(field.key, event.target.value)}
-                            className="min-h-24 resize-y rounded-lg border border-violet-100 bg-white px-3 py-3 text-sm leading-6 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                            className="min-h-24 resize-y rounded-xl border border-[#E8E1D8] bg-white px-3 py-3 text-sm leading-6 outline-none transition placeholder:text-[#B6AEA4] focus:border-[#0F766E] focus:ring-2 focus:ring-[#D7EFE8]"
                           />
                         ) : (
                           <input
                             value={form[field.key]}
                             onChange={(event) => updateField(field.key, event.target.value)}
                             placeholder={field.placeholder}
-                            className="h-11 rounded-lg border border-violet-100 bg-white px-3 text-sm outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                            className="h-11 rounded-xl border border-[#E8E1D8] bg-white px-3 text-sm outline-none transition placeholder:text-[#B6AEA4] focus:border-[#0F766E] focus:ring-2 focus:ring-[#D7EFE8]"
                           />
                         )}
                       </label>
@@ -2531,27 +2621,27 @@ export function EcHtmlGenerator() {
               ) : null}
             </section>
 
-            <div className="flex items-start gap-2 rounded-lg border border-[#EADFCF] bg-white px-4 py-3 text-sm font-bold text-stone-700 shadow-sm xl:order-12 xl:col-span-3">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />
+            <div className="flex items-start gap-2 rounded-xl border border-[#E8E1D8] bg-white px-4 py-3 text-sm font-bold text-[#6F6A63] shadow-sm xl:order-12 xl:col-span-3">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#6F6A63]" aria-hidden="true" />
               Yahooスマホ：center / font未使用　楽天スマホ：style未使用
             </div>
           </form>
 
           <section className="grid content-start gap-5 xl:contents">
-            <article className="rounded-lg border border-[#EADFCF] bg-white p-5 shadow-sm xl:order-5 xl:col-span-2 xl:flex xl:h-[760px] xl:flex-col xl:overflow-hidden">
+            <article className="rounded-2xl border border-[#E8E1D8] bg-white p-5 shadow-[0_20px_60px_rgba(47,42,36,0.08)] xl:order-5 xl:col-span-2 xl:flex xl:h-[760px] xl:flex-col xl:overflow-hidden">
               <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between xl:shrink-0">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Eye className="h-5 w-5 text-amber-700" aria-hidden="true" />
-                    <h2 className="text-lg font-bold text-amber-950">HTMLプレビュー</h2>
+                    <Eye className="h-5 w-5 text-[#B98A2D]" aria-hidden="true" />
+                    <h2 className="text-lg font-bold text-[#2F2A24]">HTMLプレビュー</h2>
                   </div>
-                  <p className="mt-1 text-sm font-medium text-stone-500">
+                  <p className="mt-1 text-sm font-medium text-[#6F6A63]">
                     現在の入力内容から作成されるHTMLの表示イメージです。コピー・ダウンロードは一括生成後のHTMLが対象です。
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex rounded-lg border border-[#EADFCF] bg-[#FAF7F0] p-1">
+                  <div className="flex rounded-xl border border-[#E8E1D8] bg-[#FAF8F4] p-1">
                     {outputs.map((output) => {
                       const isMobile = output.key === "rakutenMobile" || output.key === "yahooMobile";
                       const Icon = isMobile ? Smartphone : Monitor;
@@ -2564,10 +2654,10 @@ export function EcHtmlGenerator() {
                             setActiveMall(output.key === "rakutenPc" || output.key === "rakutenMobile" ? "rakuten" : "yahoo");
                           }}
                           className={[
-                            "inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2",
+                            "inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2",
                             activePreview === output.key
-                              ? "bg-white text-amber-800 shadow-sm"
-                              : "text-stone-600 hover:bg-white",
+                              ? "bg-white text-[#0F766E] shadow-sm"
+                              : "text-[#6F6A63] hover:bg-white",
                           ].join(" ")}
                         >
                           <Icon className="h-4 w-4" aria-hidden="true" />
@@ -2579,7 +2669,7 @@ export function EcHtmlGenerator() {
                   <button
                     type="button"
                     onClick={() => setIsPreviewExpanded(true)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-[#EADFCF] bg-white px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-[#FAF7F0] focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2"
+                    className="inline-flex items-center gap-2 rounded-lg border border-[#D8D1C7] bg-white px-4 py-2 text-sm font-bold text-[#2F2A24] transition hover:bg-[#FAF8F4] focus:outline-none focus:ring-2 focus:ring-[#B98A2D] focus:ring-offset-2"
                   >
                     <Maximize2 className="h-4 w-4" aria-hidden="true" />
                     拡大表示
@@ -2587,7 +2677,7 @@ export function EcHtmlGenerator() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-[#EADFCF] bg-[#FAF7F0] p-3 sm:p-5 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+              <div className="rounded-2xl border border-[#E8E1D8] bg-[#FAF8F4] p-3 shadow-inner sm:p-5 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
                 {renderPreview()}
               </div>
 
@@ -2595,7 +2685,7 @@ export function EcHtmlGenerator() {
                 <button
                   type="button"
                   onClick={() => setIsHtmlOpen((current) => !current)}
-                  className="text-sm font-bold text-emerald-700 underline-offset-4 hover:underline"
+                  className="text-sm font-bold text-[#0F766E] underline-offset-4 hover:underline"
                 >
                   {isHtmlOpen ? "HTMLを閉じる" : "HTMLを表示"}
                 </button>
@@ -2604,17 +2694,17 @@ export function EcHtmlGenerator() {
                     readOnly
                     value={generated[activePreview]}
                     placeholder="一括生成後に、選択中プレビューのHTMLを確認できます。"
-                    className="mt-3 h-56 w-full resize-y rounded-lg border border-stone-300 bg-stone-950 px-3 py-3 font-mono text-xs leading-relaxed text-stone-50 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                    className="mt-3 h-56 w-full resize-y rounded-xl border border-[#2F2A24] bg-[#2F2A24] px-3 py-3 font-mono text-xs leading-relaxed text-stone-50 outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-[#D7EFE8]"
                   />
                 ) : null}
               </div>
             </article>
 
-            <article className="rounded-lg border border-[#BBF7D0] bg-[#F0FDF4] p-5 shadow-sm xl:order-6 xl:col-span-3">
+            <article className="rounded-2xl border border-[#E8E1D8] bg-white p-5 shadow-[0_12px_34px_rgba(47,42,36,0.05)] xl:order-6 xl:col-span-3">
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-lg font-bold">出力結果（4種類まとめて生成されます）</h2>
+                <h2 className="text-lg font-bold text-[#2F2A24]">出力結果（4種類まとめて生成されます）</h2>
                 {hasGeneratedHtml ? (
-                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-700">
+                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[#BFE6D8] bg-[#F0FBF6] px-3 py-1 text-sm font-bold text-[#0F766E]">
                     <CheckCircle className="h-4 w-4" aria-hidden="true" />
                     生成済み
                   </span>
@@ -2625,21 +2715,21 @@ export function EcHtmlGenerator() {
                 {outputs.map((output, index) => (
                   <div
                     key={output.key}
-                    className="grid gap-3 rounded-lg border border-emerald-100 bg-white p-4 shadow-sm lg:grid-cols-[1fr_auto] lg:items-center"
+                    className="grid gap-3 rounded-xl border border-[#E8E1D8] bg-[#FAF8F4] p-4 shadow-sm lg:grid-cols-[1fr_auto] lg:items-center"
                   >
                     <div className="flex items-start gap-3">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-stone-600 shadow-sm">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-[#6F6A63] shadow-sm ring-1 ring-[#E8E1D8]">
                         {index + 1}
                       </span>
                       <div>
-                        <h3 className="font-bold text-stone-900">{output.title}</h3>
+                        <h3 className="font-bold text-[#2F2A24]">{output.title}</h3>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <span
                             className={[
                               "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold",
                               hasGeneratedHtml
-                                ? "bg-emerald-100 text-emerald-800"
-                                : "bg-stone-200 text-stone-600",
+                                ? "bg-[#D7EFE8] text-[#0F766E]"
+                                : "bg-[#E8E1D8] text-[#6F6A63]",
                             ].join(" ")}
                           >
                             <CheckCircle className="h-3.5 w-3.5" aria-hidden="true" />
@@ -2658,7 +2748,7 @@ export function EcHtmlGenerator() {
                         type="button"
                         onClick={() => void handleCopy(output.key)}
                         disabled={!hasGeneratedHtml}
-                        className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center gap-2 rounded-lg border border-[#D8D1C7] bg-white px-4 py-2 text-sm font-bold text-[#2F2A24] transition hover:bg-[#FAF8F4] focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Copy className="h-4 w-4" aria-hidden="true" />
                         {copiedKey === output.key ? "コピー済み" : "コピー"}
@@ -2667,7 +2757,7 @@ export function EcHtmlGenerator() {
                         type="button"
                         onClick={() => handleDownload(output.key)}
                         disabled={!hasGeneratedHtml}
-                        className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center gap-2 rounded-lg border border-[#D8D1C7] bg-white px-4 py-2 text-sm font-bold text-[#2F2A24] transition hover:bg-[#FAF8F4] focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Download className="h-4 w-4" aria-hidden="true" />
                         ダウンロード
@@ -2677,11 +2767,11 @@ export function EcHtmlGenerator() {
                 ))}
               </div>
 
-              <div className="mt-5 grid gap-3 rounded-lg border border-emerald-100 bg-[#ECFDF5] p-4 lg:grid-cols-[1fr_auto_auto] lg:items-center">
+              <div className="mt-5 grid gap-3 rounded-2xl border border-[#BFE6D8] bg-[#F0FBF6] p-4 lg:grid-cols-[1fr_auto_auto] lg:items-center">
                 <button
                   type="submit"
                   form="ec-html-generator-form"
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 py-3 text-base font-bold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#047857] px-5 py-3 text-base font-bold text-white shadow-sm transition hover:bg-[#0F766E] focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2"
                 >
                   <Rocket className="h-5 w-5" aria-hidden="true" />
                   楽天・Yahoo用HTMLを一括生成
@@ -2690,7 +2780,7 @@ export function EcHtmlGenerator() {
                   type="button"
                   onClick={() => void handleCopyAll()}
                   disabled={!hasGeneratedHtml}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-100 bg-white px-4 py-3 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D8D1C7] bg-white px-4 py-3 text-sm font-bold text-[#0F766E] transition hover:bg-[#FAF8F4] focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Copy className="h-4 w-4" aria-hidden="true" />
                   {copiedAll ? "コピー済み" : "コピー（すべて）"}
@@ -2699,7 +2789,7 @@ export function EcHtmlGenerator() {
                   type="button"
                   onClick={handleDownloadAll}
                   disabled={!hasGeneratedHtml}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-100 bg-white px-4 py-3 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D8D1C7] bg-white px-4 py-3 text-sm font-bold text-[#0F766E] transition hover:bg-[#FAF8F4] focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Download className="h-4 w-4" aria-hidden="true" />
                   ダウンロード（すべて）
@@ -2712,24 +2802,24 @@ export function EcHtmlGenerator() {
 
       {isPreviewExpanded ? (
         <div className="fixed inset-0 z-50 bg-black/55 p-4 sm:p-6">
-          <div className="mx-auto flex h-full max-w-6xl flex-col rounded-lg bg-white shadow-2xl">
-            <div className="flex items-center justify-between gap-3 border-b border-[#EADFCF] bg-[#FAF7F0] px-5 py-4">
+          <div className="mx-auto flex h-full max-w-6xl flex-col rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-[#E8E1D8] bg-[#FAF8F4] px-5 py-4">
               <div>
-                <h2 className="text-lg font-bold text-amber-950">HTMLプレビュー</h2>
-                <p className="text-sm font-medium text-stone-500">
+                <h2 className="text-lg font-bold text-[#2F2A24]">HTMLプレビュー</h2>
+                <p className="text-sm font-medium text-[#6F6A63]">
                   {currentPreviewOutput.previewTitle}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsPreviewExpanded(false)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#EADFCF] bg-white text-stone-700 transition hover:bg-[#FAF7F0] focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#D8D1C7] bg-white text-[#2F2A24] transition hover:bg-[#FAF8F4] focus:outline-none focus:ring-2 focus:ring-[#B98A2D] focus:ring-offset-2"
                 aria-label="閉じる"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-[#FAF7F0] p-4 sm:p-6">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[#FAF8F4] p-4 sm:p-6">
               {renderPreview(true)}
             </div>
           </div>
@@ -2738,31 +2828,4 @@ export function EcHtmlGenerator() {
     </main>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
