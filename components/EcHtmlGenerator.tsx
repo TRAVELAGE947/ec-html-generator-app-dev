@@ -1311,19 +1311,21 @@ export function EcHtmlGenerator() {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  const updateImageUrls = (
-    key: "rakutenImageUrls" | "yahooImageUrls",
-    value: string,
-  ) => {
+  const updateRakutenImageUrl = (index: number, value: string) => {
     setForm((current) => {
-      const nextImageUrls = value.split(/\r?\n/).slice(0, 20);
-      return {
-        ...current,
-        [key]: Array.from({ length: 20 }, (_, index) => nextImageUrls[index] ?? ""),
-      };
+      const nextImageUrls = [...current.rakutenImageUrls];
+      nextImageUrls[index] = value;
+      return { ...current, rakutenImageUrls: nextImageUrls };
     });
   };
 
+  const updateYahooImageUrl = (index: number, value: string) => {
+    setForm((current) => {
+      const nextImageUrls = [...current.yahooImageUrls];
+      nextImageUrls[index] = value;
+      return { ...current, yahooImageUrls: nextImageUrls };
+    });
+  };
   const selectMall = (mall: "rakuten" | "yahoo") => {
     setActiveMall(mall);
     setActivePreview(mall === "rakuten" ? "rakutenPc" : "yahoo");
@@ -1686,33 +1688,52 @@ export function EcHtmlGenerator() {
                 <h2 className="text-lg font-bold">画像設定</h2>
               </div>
               <div className="grid gap-4">
-                <label className="grid gap-1.5">
+                                <div className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-bold text-stone-700">楽天用画像URL</span>
+                    <h4 className="text-sm font-bold text-stone-700">楽天用画像URL</h4>
                     <span className="text-xs font-bold text-stone-500">{filledRakutenImageCount}/20</span>
                   </div>
-                  <textarea
-                    value={form.rakutenImageUrls.join("\n").replace(/\n+$/, "")}
-                    onChange={(event) => updateImageUrls("rakutenImageUrls", event.target.value)}
-                    placeholder="https://image.rakuten.co.jp/shop-name/cabinet/item/item-1.jpg"
-                    className="min-h-36 resize-y rounded-lg border border-stone-300 bg-white px-3 py-3 font-mono text-xs leading-6 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-                  />
-                  <span className="text-xs font-medium text-stone-500">改行区切り。楽天PC・楽天スマホ用HTMLで使用します。</span>
-                </label>
+                  {form.rakutenImageUrls.map((url, index) => (
+                    <label key={`rakuten-${index}`} className="grid gap-1">
+                      <span className="text-xs font-semibold text-stone-500">
+                        {index === 0 ? "1枚目 メイン画像URL" : `${index + 1}枚目 画像URL`}
+                      </span>
+                      <input
+                        value={url}
+                        onChange={(event) => updateRakutenImageUrl(index, event.target.value)}
+                        placeholder="https://image.rakuten.co.jp/shop-name/cabinet/item/item-1.jpg"
+                        className="h-10 rounded-lg border border-stone-300 bg-white px-3 font-mono text-xs outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                      />
+                      {cannotConvertRakutenUrl(url) ? (
+                        <span className="text-xs font-semibold text-red-600">
+                          変換できないURLです
+                        </span>
+                      ) : null}
+                    </label>
+                  ))}
+                  <span className="text-xs font-medium text-stone-500">楽天PC・楽天スマホ用HTMLで使用します。</span>
+                </div>
 
-                <label className="grid gap-1.5">
+                <div className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-bold text-stone-700">Yahoo用画像URL</span>
+                    <h4 className="text-sm font-bold text-stone-700">Yahoo用画像URL</h4>
                     <span className="text-xs font-bold text-stone-500">{filledYahooImageCount}/20</span>
                   </div>
-                  <textarea
-                    value={form.yahooImageUrls.join("\n").replace(/\n+$/, "")}
-                    onChange={(event) => updateImageUrls("yahooImageUrls", event.target.value)}
-                    placeholder="https://shopping.c.yimg.jp/lib/shop-name/item-1.jpg"
-                    className="min-h-36 resize-y rounded-lg border border-stone-300 bg-white px-3 py-3 font-mono text-xs leading-6 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-                  />
-                  <span className="text-xs font-medium text-stone-500">改行区切り。Yahoo! PC・Yahoo! スマホ用HTMLで使用します。</span>
-                </label>
+                  {form.yahooImageUrls.map((url, index) => (
+                    <label key={`yahoo-${index}`} className="grid gap-1">
+                      <span className="text-xs font-semibold text-stone-500">
+                        {index === 0 ? "1枚目 メイン画像URL" : `${index + 1}枚目 画像URL`}
+                      </span>
+                      <input
+                        value={url}
+                        onChange={(event) => updateYahooImageUrl(index, event.target.value)}
+                        placeholder="https://shopping.c.yimg.jp/lib/shop-name/item-1.jpg"
+                        className="h-10 rounded-lg border border-stone-300 bg-white px-3 font-mono text-xs outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                      />
+                    </label>
+                  ))}
+                  <span className="text-xs font-medium text-stone-500">Yahoo! PC・Yahoo! スマホ用HTMLで使用します。</span>
+                </div>
 
                 <button
                   type="button"
@@ -2045,6 +2066,10 @@ export function EcHtmlGenerator() {
     </main>
   );
 }
+
+
+
+
 
 
 
