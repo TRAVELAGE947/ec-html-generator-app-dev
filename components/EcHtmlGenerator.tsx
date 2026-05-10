@@ -48,6 +48,7 @@ type ProductForm = {
   insertLineBanner: boolean;
   insertStockNotice: boolean;
   insertPolicyImage: boolean;
+  pageBlockOrder: PageBlockKey[];
 };
 
 type GeneratedHtml = {
@@ -64,6 +65,7 @@ type ProductTextFieldKey = keyof Omit<
   | "insertLineBanner"
   | "insertStockNotice"
   | "insertPolicyImage"
+  | "pageBlockOrder"
 >;
 
 type TextField = {
@@ -84,6 +86,16 @@ type HtmlOutput = {
 type BannerKey = "policyUrl" | "stockNoticeUrl" | "lineBannerUrl";
 type BannerUrls = Record<BannerKey, string>;
 type BannerToggleKey = "insertLineBanner" | "insertStockNotice" | "insertPolicyImage";
+type PageBlockKey =
+  | "mainImage"
+  | "catchCopy"
+  | "productDescription"
+  | "point"
+  | "extraDescription"
+  | "color"
+  | "itemDetail"
+  | "notice"
+  | "storeCommonImages";
 type SavedDraft = {
   id: string;
   name: string;
@@ -104,6 +116,30 @@ const copyFieldKeys = [
   "colorDescription",
   "closingCopy",
 ] as const satisfies ReadonlyArray<keyof ProductForm>;
+
+const defaultPageBlockOrder: PageBlockKey[] = [
+  "mainImage",
+  "catchCopy",
+  "productDescription",
+  "point",
+  "extraDescription",
+  "color",
+  "itemDetail",
+  "notice",
+  "storeCommonImages",
+];
+
+const pageBlockLabels: Record<PageBlockKey, string> = {
+  mainImage: "メイン画像",
+  catchCopy: "キャッチコピー",
+  productDescription: "商品説明",
+  point: "POINT",
+  extraDescription: "補足説明",
+  color: "COLOR",
+  itemDetail: "商品詳細",
+  notice: "注意事項",
+  storeCommonImages: "店舗共通画像",
+};
 
 const initialForm: ProductForm = {
   productName: "",
@@ -137,6 +173,7 @@ const initialForm: ProductForm = {
   insertLineBanner: true,
   insertStockNotice: true,
   insertPolicyImage: true,
+  pageBlockOrder: defaultPageBlockOrder,
 };
 
 const formStorageKey = "ec-html-generator-form-v1";
@@ -154,6 +191,17 @@ function normalizeStoredImageUrls(value: unknown): string[] {
   return Array.from({ length: 20 }, (_, index) =>
     typeof source[index] === "string" ? source[index] : "",
   );
+}
+
+function normalizePageBlockOrder(value: unknown): PageBlockKey[] {
+  const allowed = new Set<PageBlockKey>(defaultPageBlockOrder);
+  const source = Array.isArray(value) ? value : [];
+  const storedOrder = source.filter((item): item is PageBlockKey =>
+    typeof item === "string" && allowed.has(item as PageBlockKey),
+  );
+  const missingBlocks = defaultPageBlockOrder.filter((key) => !storedOrder.includes(key));
+
+  return [...storedOrder, ...missingBlocks];
 }
 
 function normalizeStoredForm(value: unknown): ProductForm {
@@ -193,6 +241,7 @@ function normalizeStoredForm(value: unknown): ProductForm {
     insertLineBanner: typeof source.insertLineBanner === "boolean" ? source.insertLineBanner : initialForm.insertLineBanner,
     insertStockNotice: typeof source.insertStockNotice === "boolean" ? source.insertStockNotice : initialForm.insertStockNotice,
     insertPolicyImage: typeof source.insertPolicyImage === "boolean" ? source.insertPolicyImage : initialForm.insertPolicyImage,
+    pageBlockOrder: normalizePageBlockOrder(source.pageBlockOrder),
   };
 }
 
@@ -481,6 +530,51 @@ function bannerGroupHtml(banners: BannerUrls, imageBuilder = imageHtml): string 
     .join("\n");
 }
 
+function orderedPageBlocks(
+  blockOrder: PageBlockKey[],
+  blocks: Record<PageBlockKey, string>,
+): string {
+  return normalizePageBlockOrder(blockOrder)
+    .map((key) => blocks[key])
+    .filter(Boolean)
+    .join("\n");
+}
+
+function pointText(form: ProductForm): string {
+  const pointRows = [
+    [form.point1Title, form.point1Text],
+    [form.point2Title, form.point2Text],
+    [form.point3Title, form.point3Text],
+  ].filter(([title, text]) => title.trim() || text.trim());
+
+  return [
+    form.pointLead.trim(),
+    ...pointRows.map(([title, text], index) =>
+      [
+        `Point ${String(index + 1).padStart(2, "0")}`,
+        title.trim(),
+        text.trim(),
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    ),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function simplePointBlock(form: ProductForm, width: string): string {
+  return textBlock("POINT", pointText(form), width);
+}
+
+function simpleColorBlock(form: ProductForm, width: string): string {
+  return textBlock(
+    "COLOR",
+    [form.colors.trim(), form.colorDescription.trim()].filter(Boolean).join("\n\n"),
+    width,
+  );
+}
+
 function specTable(form: ProductForm, width: string): string {
   const rows = specLabels
     .filter(([, key]) => String(form[key]).trim())
@@ -742,13 +836,21 @@ function yahooMobileBannerHtml(banners: BannerUrls): string {
 
 function generateSimpleHtml(form: ProductForm, imageUrls: string[], banners: BannerUrls): string {
   const filledImageUrls = filled(imageUrls);
+  const blocks: Record<PageBlockKey, string> = {
+    mainImage: filledImageUrls.map((url) => imageHtml(url)).join("\n"),
+    catchCopy: textBlock("キャッチコピー", form.leadCopy, "96%"),
+    productDescription: textBlock("商品説明", form.description, "96%"),
+    point: simplePointBlock(form, "96%"),
+    extraDescription: textBlock("補足説明", form.extraDescription, "96%"),
+    color: simpleColorBlock(form, "96%"),
+    itemDetail: specTable(form, "96%"),
+    notice: textBlock("注意事項", form.notice, "96%"),
+    storeCommonImages: bannerGroupHtml(banners),
+  };
+
   return [
     "<center>",
-    filledImageUrls.map((url) => imageHtml(url)).join("\n"),
-    textBlock("商品説明", form.description, "96%"),
-    specTable(form, "96%"),
-    textBlock("注意事項", form.notice, "96%"),
-    bannerGroupHtml(banners),
+    orderedPageBlocks(form.pageBlockOrder, blocks),
     "</center>",
   ]
     .filter(Boolean)
@@ -773,60 +875,74 @@ function generateRakutenPcHtml(form: ProductForm, banners: BannerUrls): string {
   const imageUrls = form.rakutenImageUrls;
   const titleMeta = [form.brand.trim(), form.country.trim()].filter(Boolean).join(" / ");
   const colorText = form.colors.trim();
+  const titleBlock = form.productName.trim() || titleMeta
+    ? [
+        '<table width="96%" border="0" cellspacing="0" cellpadding="18" bgcolor="#ffffff">',
+        "<tr>",
+        '<td align="center">',
+        form.productName.trim()
+          ? `<font size="5" color="#333333" face="Times New Roman, serif"><b>${escapeHtml(form.productName.trim())}</b></font><br>`
+          : "",
+        titleMeta ? `<font size="3" color="#777777">${escapeHtml(titleMeta)}</font>` : "",
+        "</td>",
+        "</tr>",
+        "</table>",
+        "<br>",
+      ].join("\n")
+    : "";
+  const noticeBlock = form.notice.trim()
+    ? [
+        '<table width="96%" border="0" cellspacing="0" cellpadding="14" bgcolor="#fafafa">',
+        "<tr>",
+        '<td align="left">',
+        `<font size="2" color="#777777">${linesToHtml(form.notice.trim())}</font>`,
+        "</td>",
+        "</tr>",
+        "</table>",
+        "<br><br>",
+      ].join("\n")
+    : "";
+  const blocks: Record<PageBlockKey, string> = {
+    mainImage: [
+      imageAt(
+        imageUrls,
+        0,
+        form.productName.trim() ? `${form.productName.trim()} メイン画像` : "メイン画像",
+      ),
+      titleBlock,
+    ].filter(Boolean).join("\n"),
+    catchCopy: [pcTextBlock(form.leadCopy, "#f7f4ef", "center"), imageAt(imageUrls, 1)]
+      .filter(Boolean)
+      .join("\n"),
+    productDescription: [pcTextBlock(form.description, "#ffffff", "left"), imagesFrom(imageUrls, 2, 3)]
+      .filter(Boolean)
+      .join("\n"),
+    point: [
+      pcSectionHeading("POINT", form.pointLead),
+      pcPointTable(form),
+      imagesFrom(imageUrls, 4, 5),
+    ].filter(Boolean).join("\n"),
+    extraDescription: [pcTextBlock(form.extraDescription, "#fafafa", "left"), imageAt(imageUrls, 6)]
+      .filter(Boolean)
+      .join("\n"),
+    color: [
+      colorText ? pcSectionHeading("COLOR", colorText) : "",
+      pcTextBlock(form.colorDescription, "#ffffff", "left"),
+      imagesFrom(imageUrls, 7, 19),
+    ].filter(Boolean).join("\n"),
+    itemDetail: [pcSectionHeading("ITEM DETAIL"), pcSpecTable(form), pcTextBlock(form.closingCopy, "#f7f4ef", "center")]
+      .filter(Boolean)
+      .join("\n"),
+    notice: noticeBlock,
+    storeCommonImages: bannerGroupHtml(banners, pcImageHtml),
+  };
 
   return [
     "<center>",
     '<table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#ffffff">',
     "<tr>",
     "<td align=\"center\">",
-    imageAt(
-      imageUrls,
-      0,
-      form.productName.trim() ? `${form.productName.trim()} メイン画像` : "メイン画像",
-    ),
-    form.productName.trim() || titleMeta
-      ? [
-          '<table width="96%" border="0" cellspacing="0" cellpadding="18" bgcolor="#ffffff">',
-          "<tr>",
-          '<td align="center">',
-          form.productName.trim()
-            ? `<font size="5" color="#333333" face="Times New Roman, serif"><b>${escapeHtml(form.productName.trim())}</b></font><br>`
-            : "",
-          titleMeta ? `<font size="3" color="#777777">${escapeHtml(titleMeta)}</font>` : "",
-          "</td>",
-          "</tr>",
-          "</table>",
-          "<br>",
-        ].join("\n")
-      : "",
-    pcTextBlock(form.leadCopy, "#f7f4ef", "center"),
-    imageAt(imageUrls, 1),
-    pcTextBlock(form.description, "#ffffff", "left"),
-    imagesFrom(imageUrls, 2, 3),
-    pcSectionHeading("POINT", form.pointLead),
-    pcPointTable(form),
-    imagesFrom(imageUrls, 4, 5),
-    pcTextBlock(form.extraDescription, "#fafafa", "left"),
-    imageAt(imageUrls, 6),
-    colorText ? pcSectionHeading("COLOR", colorText) : "",
-    pcTextBlock(form.colorDescription, "#ffffff", "left"),
-    imagesFrom(imageUrls, 7, 19),
-    pcSectionHeading("ITEM DETAIL"),
-    pcSpecTable(form),
-    pcTextBlock(form.closingCopy, "#f7f4ef", "center"),
-    form.notice.trim()
-      ? [
-          '<table width="96%" border="0" cellspacing="0" cellpadding="14" bgcolor="#fafafa">',
-          "<tr>",
-          '<td align="left">',
-          `<font size="2" color="#777777">${linesToHtml(form.notice.trim())}</font>`,
-          "</td>",
-          "</tr>",
-          "</table>",
-          "<br><br>",
-        ].join("\n")
-      : "",
-    bannerGroupHtml(banners, pcImageHtml),
+    orderedPageBlocks(form.pageBlockOrder, blocks),
     "</td>",
     "</tr>",
     "</table>",
@@ -847,28 +963,34 @@ function generateYahooMobileHtml(form: ProductForm, banners: BannerUrls): string
     })
     .join("\n");
   const specHtml = yahooMobileSpecTable(form);
+  const itemDetailBlock = specHtml
+    ? [
+        '<table width="96%" border="0" cellspacing="0" cellpadding="12" bgcolor="#ffffff">',
+        "<tr>",
+        '<td align="center" bgcolor="#f7f4ef"><b>ITEM DETAIL</b></td>',
+        "</tr>",
+        "</table>",
+        "<br>",
+        specHtml,
+      ].join("\n")
+    : "";
+  const blocks: Record<PageBlockKey, string> = {
+    mainImage: imageHtml,
+    catchCopy: yahooMobileTextBlock("キャッチコピー", form.leadCopy),
+    productDescription: yahooMobileTextBlock("商品説明", form.description),
+    point: yahooMobilePointTable(form),
+    extraDescription: yahooMobileTextBlock("補足説明", form.extraDescription),
+    color: yahooMobileColorBlock(form),
+    itemDetail: itemDetailBlock,
+    notice: yahooMobileTextBlock("注意事項", form.notice),
+    storeCommonImages: yahooMobileBannerHtml(banners),
+  };
 
   return [
     '<table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#ffffff">',
     "<tr>",
     '<td align="center">',
-    imageHtml,
-    yahooMobileTextBlock("商品説明", form.description),
-    yahooMobilePointTable(form),
-    yahooMobileColorBlock(form),
-    specHtml
-      ? [
-          '<table width="96%" border="0" cellspacing="0" cellpadding="12" bgcolor="#ffffff">',
-          "<tr>",
-          '<td align="center" bgcolor="#f7f4ef"><b>ITEM DETAIL</b></td>',
-          "</tr>",
-          "</table>",
-          "<br>",
-          specHtml,
-        ].join("\n")
-      : "",
-    yahooMobileTextBlock("注意事項", form.notice),
-    yahooMobileBannerHtml(banners),
+    orderedPageBlocks(form.pageBlockOrder, blocks),
     "</td>",
     "</tr>",
     "</table>",
@@ -1451,6 +1573,23 @@ export function EcHtmlGenerator() {
       return { ...current, [key]: nextImageUrls };
     });
   };
+  const movePageBlock = (index: number, direction: "up" | "down") => {
+    setForm((current) => {
+      const nextBlockOrder = normalizePageBlockOrder(current.pageBlockOrder);
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+
+      if (targetIndex < 0 || targetIndex >= nextBlockOrder.length) {
+        return current;
+      }
+
+      [nextBlockOrder[index], nextBlockOrder[targetIndex]] = [
+        nextBlockOrder[targetIndex],
+        nextBlockOrder[index],
+      ];
+
+      return { ...current, pageBlockOrder: nextBlockOrder };
+    });
+  };
   const selectMall = (mall: "rakuten" | "yahoo") => {
     setActiveMall(mall);
     setActivePreview(mall === "rakuten" ? "rakutenPc" : "yahoo");
@@ -1708,6 +1847,8 @@ export function EcHtmlGenerator() {
     ["insertStockNotice", "在庫注意画像を挿入"],
     ["insertPolicyImage", "ポリシー画像を挿入"],
   ];
+  const pageBlockItems = normalizePageBlockOrder(form.pageBlockOrder);
+
   const renderPreview = (expanded = false) => {
     const previewHtml = generated[activePreview];
     const isMobilePreview = activePreview === "rakutenMobile" || activePreview === "yahooMobile";
@@ -1891,7 +2032,7 @@ export function EcHtmlGenerator() {
                             : "border-sky-100 bg-white/80 text-stone-700 hover:bg-white",
                         ].join(" ")}
                       >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-xs shadow-sm">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-xs font-bold text-red-600 shadow-sm">
                           {badge}
                         </span>
                         {label}
@@ -1917,6 +2058,50 @@ export function EcHtmlGenerator() {
                     1回の入力で、楽天PC・楽天スマホ・Yahoo! PC・Yahoo! スマホ用HTMLをまとめて生成できます。
                   </p>
                 </div>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-[#E9D5FF] bg-[#F5F3FF] p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <Settings2 className="h-5 w-5 text-violet-700" aria-hidden="true" />
+                <h2 className="text-lg font-bold text-violet-950">表示順設定</h2>
+              </div>
+              <p className="rounded-lg border border-violet-100 bg-white px-3 py-2 text-sm font-medium leading-6 text-stone-600">
+                商品ページ内の表示ブロック順を変更できます。変更後に一括生成すると、4種類のHTMLに反映されます。
+              </p>
+
+              <div className="mt-4 grid gap-2">
+                {pageBlockItems.map((blockKey, index) => (
+                  <div
+                    key={blockKey}
+                    className="grid gap-3 rounded-lg border border-violet-100 bg-white p-3 shadow-sm sm:grid-cols-[auto_1fr_auto] sm:items-center"
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F5F3FF] text-sm font-bold text-violet-800">
+                      {index + 1}
+                    </span>
+                    <span className="text-sm font-bold text-stone-800">
+                      {pageBlockLabels[blockKey]}
+                    </span>
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                      <button
+                        type="button"
+                        onClick={() => movePageBlock(index, "up")}
+                        disabled={index === 0}
+                        className="rounded-md border border-violet-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        上へ
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => movePageBlock(index, "down")}
+                        disabled={index === pageBlockItems.length - 1}
+                        className="rounded-md border border-violet-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        下へ
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </section>
 
@@ -2007,6 +2192,24 @@ export function EcHtmlGenerator() {
                   <span className="text-xs font-medium text-stone-500">楽天PC・楽天スマホ用HTMLで使用します。</span>
                 </div>
 
+                <button
+                  type="button"
+                  onClick={handleGenerateYahooUrls}
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2"
+                >
+                  <Download className="h-4 w-4 rotate-[-90deg]" aria-hidden="true" />
+                  楽天URLからYahoo用URLを生成
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleGenerateRakutenUrls}
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2"
+                >
+                  <Download className="h-4 w-4 rotate-90" aria-hidden="true" />
+                  Yahoo URLから楽天用URLを生成
+                </button>
+
                 <div className="grid gap-3 rounded-lg border border-rose-100 bg-white p-3 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <h4 className="text-sm font-bold text-stone-700">Yahoo用画像URL</h4>
@@ -2052,24 +2255,6 @@ export function EcHtmlGenerator() {
                   ))}
                   <span className="text-xs font-medium text-stone-500">Yahoo! PC・Yahoo! スマホ用HTMLで使用します。</span>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleGenerateYahooUrls}
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2"
-                >
-                  <Download className="h-4 w-4 rotate-[-90deg]" aria-hidden="true" />
-                  楽天URLからYahoo用URLを生成
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleGenerateRakutenUrls}
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2"
-                >
-                  <Download className="h-4 w-4 rotate-90" aria-hidden="true" />
-                  Yahoo URLから楽天用URLを生成
-                </button>
 
                 <p className="rounded-lg border border-rose-100 bg-white px-3 py-2 text-sm font-medium text-stone-600">
                   選択したモールに応じた画像URLを使用します。
