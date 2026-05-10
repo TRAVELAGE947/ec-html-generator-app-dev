@@ -84,6 +84,12 @@ type HtmlOutput = {
 type BannerKey = "policyUrl" | "stockNoticeUrl" | "lineBannerUrl";
 type BannerUrls = Record<BannerKey, string>;
 type BannerToggleKey = "insertLineBanner" | "insertStockNotice" | "insertPolicyImage";
+type SavedDraft = {
+  id: string;
+  name: string;
+  updatedAt: string;
+  form: ProductForm;
+};
 
 const copyFieldKeys = [
   "leadCopy",
@@ -134,6 +140,8 @@ const initialForm: ProductForm = {
 };
 
 const formStorageKey = "ec-html-generator-form-v1";
+const draftStorageKey = "ec-html-generator-drafts-v1";
+const maxDraftCount = 20;
 const emptyGeneratedHtml: GeneratedHtml = {
   rakutenMobile: "",
   rakutenPc: "",
@@ -186,6 +194,54 @@ function normalizeStoredForm(value: unknown): ProductForm {
     insertStockNotice: typeof source.insertStockNotice === "boolean" ? source.insertStockNotice : initialForm.insertStockNotice,
     insertPolicyImage: typeof source.insertPolicyImage === "boolean" ? source.insertPolicyImage : initialForm.insertPolicyImage,
   };
+}
+
+function formatDraftDate(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function normalizeSavedDrafts(value: unknown): SavedDraft[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item): SavedDraft | null => {
+      if (typeof item !== "object" || item === null) {
+        return null;
+      }
+
+      const source = item as Partial<Record<keyof SavedDraft, unknown>>;
+      const form = normalizeStoredForm(source.form);
+      const productName = form.productName.trim();
+
+      return {
+        id: typeof source.id === "string" ? source.id : `${Date.now()}-${Math.random()}`,
+        name:
+          typeof source.name === "string" && source.name.trim()
+            ? source.name.trim()
+            : productName || "無題の下書き",
+        updatedAt:
+          typeof source.updatedAt === "string" && source.updatedAt
+            ? source.updatedAt
+            : new Date().toISOString(),
+        form,
+      };
+    })
+    .filter((item): item is SavedDraft => item !== null)
+    .slice(0, maxDraftCount);
 }
 
 const fields: TextField[] = [
@@ -1267,6 +1323,8 @@ export function EcHtmlGenerator() {
   const [copiedAll, setCopiedAll] = useState(false);
   const [hasRestoredForm, setHasRestoredForm] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState("");
+  const [savedDrafts, setSavedDrafts] = useState<SavedDraft[]>([]);
+  const [draftMessage, setDraftMessage] = useState("");
   const [activeMall, setActiveMall] = useState<"rakuten" | "yahoo">("rakuten");
   const [activePreview, setActivePreview] = useState<keyof GeneratedHtml>("rakutenPc");
   const [isHtmlOpen, setIsHtmlOpen] = useState(false);
@@ -1298,6 +1356,11 @@ export function EcHtmlGenerator() {
       if (storedForm) {
         setForm(normalizeStoredForm(JSON.parse(storedForm)));
       }
+
+      const storedDrafts = window.localStorage.getItem(draftStorageKey);
+      if (storedDrafts) {
+        setSavedDrafts(normalizeSavedDrafts(JSON.parse(storedDrafts)));
+      }
     } catch (error) {
       console.warn("Failed to restore EC HTML generator form:", error);
     } finally {
@@ -1317,6 +1380,18 @@ export function EcHtmlGenerator() {
       console.warn("Failed to save EC HTML generator form:", error);
     }
   }, [form, hasRestoredForm]);
+
+  useEffect(() => {
+    if (!hasRestoredForm) {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(draftStorageKey, JSON.stringify(savedDrafts));
+    } catch (error) {
+      console.warn("Failed to save EC HTML generator drafts:", error);
+    }
+  }, [savedDrafts, hasRestoredForm]);
 
   const updateField = (
     key: ProductTextFieldKey,
@@ -1399,6 +1474,81 @@ export function EcHtmlGenerator() {
     setHasGeneratedHtml(false);
     setCopiedKey(null);
     setCopiedAll(false);
+  };
+
+  const resetGeneratedState = () => {
+    setGenerated(emptyGeneratedHtml);
+    setHasGeneratedHtml(false);
+    setCopiedKey(null);
+    setCopiedAll(false);
+  };
+
+  const handleSaveDraft = () => {
+    const name = form.productName.trim() || "無題の下書き";
+    const nextDraft: SavedDraft = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      updatedAt: new Date().toISOString(),
+      form,
+    };
+
+    setSavedDrafts((current) => [nextDraft, ...current].slice(0, maxDraftCount));
+    setDraftMessage(`「${name}」を下書き保存しました。`);
+  };
+
+  const handleLoadDraft = (draft: SavedDraft) => {
+    setForm(normalizeStoredForm(draft.form));
+    resetGeneratedState();
+    setDraftMessage(`「${draft.name}」を呼び出しました。`);
+  };
+
+  const handleDeleteDraft = (id: string) => {
+    setSavedDrafts((current) => current.filter((draft) => draft.id !== id));
+    setDraftMessage("下書きを削除しました。");
+  };
+
+  const handleClearImageSettings = () => {
+    if (!window.confirm("画像設定をクリアしますか？")) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      rakutenImageUrls: Array.from({ length: 20 }, () => ""),
+      yahooImageUrls: Array.from({ length: 20 }, () => ""),
+      rakutenLineBannerUrl: "",
+      rakutenStockNoticeUrl: "",
+      rakutenPolicyUrl: "",
+      yahooLineBannerUrl: "",
+      yahooStockNoticeUrl: "",
+      yahooPolicyUrl: "",
+    }));
+    resetGeneratedState();
+    setDraftMessage("画像設定をクリアしました。");
+  };
+
+  const handleClearDetailCopySettings = () => {
+    if (!window.confirm("詳細コピー設定をクリアしますか？")) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      leadCopy: "",
+      pointLead: "",
+      point1Title: "",
+      point1Text: "",
+      point2Title: "",
+      point2Text: "",
+      point3Title: "",
+      point3Text: "",
+      extraDescription: "",
+      colorDescription: "",
+      closingCopy: "",
+      notice: "",
+    }));
+    resetGeneratedState();
+    setDraftMessage("詳細コピー設定をクリアしました。");
   };
 
   const handleAutoCopy = () => {
@@ -1625,6 +1775,97 @@ export function EcHtmlGenerator() {
               handleGenerate();
             }}
           >
+            <section className="rounded-lg border border-emerald-200 bg-[#ECFDF5] p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-emerald-700" aria-hidden="true" />
+                <h2 className="text-lg font-bold text-emerald-950">下書き保存</h2>
+              </div>
+              <p className="rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm font-medium leading-6 text-stone-600">
+                下書きは最大20件まで保存できます。保存した下書きは、同じPC・同じブラウザで呼び出せます。
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  className="inline-flex items-center justify-center rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                >
+                  下書き保存
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearImageSettings}
+                  className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-white px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                >
+                  画像設定をクリア
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearDetailCopySettings}
+                  className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-white px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                >
+                  詳細コピー設定をクリア
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearForm}
+                  className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                >
+                  入力内容をクリア
+                </button>
+              </div>
+
+              {draftMessage ? (
+                <p className="mt-3 rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm font-bold text-emerald-800">
+                  {draftMessage}
+                </p>
+              ) : null}
+
+              <div className="mt-4 grid gap-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-bold text-stone-800">保存済み下書き一覧</h3>
+                  <span className="text-xs font-bold text-stone-500">
+                    {savedDrafts.length}/{maxDraftCount}
+                  </span>
+                </div>
+                {savedDrafts.length ? (
+                  savedDrafts.map((draft) => (
+                    <div
+                      key={draft.id}
+                      className="grid gap-3 rounded-lg border border-emerald-100 bg-white p-3 sm:grid-cols-[1fr_auto] sm:items-center"
+                    >
+                      <div>
+                        <p className="font-bold text-stone-900">{draft.name}</p>
+                        <p className="mt-1 text-xs font-medium text-stone-500">
+                          保存日時：{formatDraftDate(draft.updatedAt) || "不明"}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 sm:justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleLoadDraft(draft)}
+                          className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                        >
+                          呼び出し
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDraft(draft.id)}
+                          className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                        >
+                          削除
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-lg border border-dashed border-emerald-200 bg-white px-4 py-6 text-center text-sm font-bold text-stone-400">
+                    保存済みの下書きはありません。
+                  </p>
+                )}
+              </div>
+            </section>
+
             <section className="rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <Settings2 className="h-5 w-5 text-sky-700" aria-hidden="true" />
