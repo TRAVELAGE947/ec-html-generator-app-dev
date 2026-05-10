@@ -2161,7 +2161,7 @@ export function EcHtmlGenerator() {
           </div>
         </header>
 
-        <section className="grid gap-6 xl:grid-cols-3 xl:items-stretch">
+        <section className="grid gap-6 xl:grid-cols-[minmax(440px,540px)_minmax(0,1fr)_minmax(0,1fr)] xl:items-stretch">
           <form
             id="ec-html-generator-form"
             className="grid content-start gap-5 xl:contents"
@@ -2224,22 +2224,22 @@ export function EcHtmlGenerator() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#E9D5FF] bg-[#F5F3FF] p-5 shadow-sm xl:order-4">
-              <div className="mb-4 flex items-center gap-2">
+            <section className="rounded-lg border border-[#E9D5FF] bg-[#F5F3FF] p-4 shadow-sm xl:order-4 xl:flex xl:h-[760px] xl:flex-col">
+              <div className="mb-3 flex items-center gap-2">
                 <Settings2 className="h-5 w-5 text-violet-700" aria-hidden="true" />
                 <h2 className="text-lg font-bold text-violet-950">表示順設定</h2>
               </div>
-              <p className="rounded-lg border border-violet-100 bg-white px-3 py-2 text-sm font-medium leading-6 text-stone-600">
+              <p className="rounded-lg border border-violet-100 bg-white px-3 py-2 text-sm font-medium leading-5 text-stone-600">
                 商品ページ内の表示ブロック順を変更できます。変更後に一括生成すると、4種類のHTMLに反映されます。
               </p>
 
-              <div className="mt-4 grid gap-2">
+              <div className="mt-4 grid gap-1.5 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-1">
                 {visiblePageBlockItems.map((blockKey, index) => (
                   <div
                     key={blockKey}
-                    className="grid gap-3 rounded-lg border border-violet-100 bg-white p-3 shadow-sm sm:grid-cols-[auto_1fr_auto] sm:items-center"
+                    className="grid gap-1.5 rounded-lg border border-violet-100 bg-white p-2 shadow-sm sm:grid-cols-[auto_1fr_auto] sm:items-center"
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F5F3FF] text-sm font-bold text-violet-800">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F5F3FF] text-xs font-bold text-violet-800">
                       {index + 1}
                     </span>
                     <span className="text-sm font-bold text-stone-800">
@@ -2256,7 +2256,7 @@ export function EcHtmlGenerator() {
                           )
                         }
                         disabled={index === 0}
-                        className="rounded-md border border-violet-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-md border border-violet-100 bg-white px-2 py-0.5 text-xs font-bold text-stone-600 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         上へ
                       </button>
@@ -2270,7 +2270,7 @@ export function EcHtmlGenerator() {
                           )
                         }
                         disabled={index === visiblePageBlockItems.length - 1}
-                        className="rounded-md border border-violet-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-md border border-violet-100 bg-white px-2 py-0.5 text-xs font-bold text-stone-600 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         下へ
                       </button>
@@ -2538,8 +2538,8 @@ export function EcHtmlGenerator() {
           </form>
 
           <section className="grid content-start gap-5 xl:contents">
-            <article className="rounded-lg border border-[#EADFCF] bg-white p-5 shadow-sm xl:order-5 xl:col-span-2">
-              <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <article className="rounded-lg border border-[#EADFCF] bg-white p-5 shadow-sm xl:order-5 xl:col-span-2 xl:flex xl:h-[760px] xl:flex-col xl:overflow-hidden">
+              <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between xl:shrink-0">
                 <div>
                   <div className="flex items-center gap-2">
                     <Eye className="h-5 w-5 text-amber-700" aria-hidden="true" />
@@ -2587,11 +2587,11 @@ export function EcHtmlGenerator() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-[#EADFCF] bg-[#FAF7F0] p-3 sm:p-5">
+              <div className="rounded-lg border border-[#EADFCF] bg-[#FAF7F0] p-3 sm:p-5 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
                 {renderPreview()}
               </div>
 
-              <div className="mt-4">
+              <div className="mt-4 xl:shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsHtmlOpen((current) => !current)}
@@ -2738,6 +2738,7 @@ export function EcHtmlGenerator() {
     </main>
   );
 }
+
 
 
 
