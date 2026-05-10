@@ -266,8 +266,12 @@ const pcSpecLabels: Array<[label: string, key: keyof ProductForm]> = [
 ];
 
 const bannerOutputOrder: BannerKey[] = ["lineBannerUrl", "stockNoticeUrl", "policyUrl"];
-const yahooImageBaseUrl = "";
-const rakutenImageBaseUrl = "";
+const yahooImageBaseUrl = "https://shopping.c.yimg.jp/lib/";
+const rakutenImageBaseUrl = "https://image.rakuten.co.jp/";
+
+function normalizeYahooStoreId(storeId: string): string {
+  return storeId === "h-garden-fuk" ? "h-garden" : storeId;
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -296,11 +300,14 @@ function convertRakutenToYahooUrl(url: string): string {
     return "";
   }
 
-  const filename = trimmed.split("/").pop()?.trim();
+  const path = trimmed.slice(rakutenImageBaseUrl.length);
+  const [storeId, cabinetDir, ...rest] = path.split("/");
+  const filename = rest.pop()?.trim();
 
-  return filename ? `${yahooImageBaseUrl}${filename}` : "";
+  return storeId && cabinetDir === "cabinet" && filename
+    ? `${yahooImageBaseUrl}${normalizeYahooStoreId(storeId)}/${filename}`
+    : "";
 }
-
 function convertRakutenUrlsToYahoo(urls: string[]): string[] {
   return urls.map(convertRakutenToYahooUrl);
 }
@@ -2038,6 +2045,8 @@ export function EcHtmlGenerator() {
     </main>
   );
 }
+
+
 
 
 
