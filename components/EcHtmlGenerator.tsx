@@ -1447,6 +1447,7 @@ export function EcHtmlGenerator() {
   const [lastSavedAt, setLastSavedAt] = useState("");
   const [savedDrafts, setSavedDrafts] = useState<SavedDraft[]>([]);
   const [draftMessage, setDraftMessage] = useState("");
+  const [isDraftListOpen, setIsDraftListOpen] = useState(false);
   const [activeMall, setActiveMall] = useState<"rakuten" | "yahoo">("rakuten");
   const [activePreview, setActivePreview] = useState<keyof GeneratedHtml>("rakutenPc");
   const [isHtmlOpen, setIsHtmlOpen] = useState(false);
@@ -1905,64 +1906,54 @@ export function EcHtmlGenerator() {
               </p>
             </div>
           </div>
-        </header>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(420px,520px)_1fr]">
-          <form
-            id="ec-html-generator-form"
-            className="grid content-start gap-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              handleGenerate();
-            }}
-          >
-            <section className="rounded-lg border border-emerald-200 bg-[#ECFDF5] p-5 shadow-sm">
-              <div className="mb-4 flex items-center gap-2">
-                <FileText className="h-5 w-5 text-emerald-700" aria-hidden="true" />
-                <h2 className="text-lg font-bold text-emerald-950">下書き保存</h2>
-              </div>
-              <p className="rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm font-medium leading-6 text-stone-600">
-                下書きは最大20件まで保存できます。保存した下書きは、同じPC・同じブラウザで呼び出せます。
+          <div className="mt-5 rounded-lg border border-emerald-100 bg-[#ECFDF5] p-3 shadow-sm">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                className="inline-flex items-center justify-center rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              >
+                下書き保存
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDraftListOpen((current) => !current)}
+                className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-white px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              >
+                保存済み下書き一覧
+              </button>
+              <button
+                type="button"
+                onClick={handleClearImageSettings}
+                className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-white px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              >
+                画像設定をクリア
+              </button>
+              <button
+                type="button"
+                onClick={handleClearDetailCopySettings}
+                className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-white px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              >
+                詳細コピー設定をクリア
+              </button>
+              <button
+                type="button"
+                onClick={handleClearForm}
+                className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              >
+                入力内容をクリア
+              </button>
+            </div>
+
+            {draftMessage ? (
+              <p className="mt-3 rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm font-bold text-emerald-800">
+                {draftMessage}
               </p>
+            ) : null}
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={handleSaveDraft}
-                  className="inline-flex items-center justify-center rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-                >
-                  下書き保存
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClearImageSettings}
-                  className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-white px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-                >
-                  画像設定をクリア
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClearDetailCopySettings}
-                  className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-white px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-                >
-                  詳細コピー設定をクリア
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClearForm}
-                  className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                >
-                  入力内容をクリア
-                </button>
-              </div>
-
-              {draftMessage ? (
-                <p className="mt-3 rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm font-bold text-emerald-800">
-                  {draftMessage}
-                </p>
-              ) : null}
-
-              <div className="mt-4 grid gap-3">
+            {isDraftListOpen ? (
+              <div className="mt-3 grid gap-3 rounded-lg border border-emerald-100 bg-white p-3">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-bold text-stone-800">保存済み下書き一覧</h3>
                   <span className="text-xs font-bold text-stone-500">
@@ -1973,7 +1964,7 @@ export function EcHtmlGenerator() {
                   savedDrafts.map((draft) => (
                     <div
                       key={draft.id}
-                      className="grid gap-3 rounded-lg border border-emerald-100 bg-white p-3 sm:grid-cols-[1fr_auto] sm:items-center"
+                      className="grid gap-3 rounded-lg border border-emerald-100 bg-[#ECFDF5] p-3 sm:grid-cols-[1fr_auto] sm:items-center"
                     >
                       <div>
                         <p className="font-bold text-stone-900">{draft.name}</p>
@@ -2000,13 +1991,24 @@ export function EcHtmlGenerator() {
                     </div>
                   ))
                 ) : (
-                  <p className="rounded-lg border border-dashed border-emerald-200 bg-white px-4 py-6 text-center text-sm font-bold text-stone-400">
+                  <p className="rounded-lg border border-dashed border-emerald-200 bg-[#ECFDF5] px-4 py-6 text-center text-sm font-bold text-stone-400">
                     保存済みの下書きはありません。
                   </p>
                 )}
               </div>
-            </section>
+            ) : null}
+          </div>
+        </header>
 
+        <section className="grid gap-6 xl:grid-cols-[minmax(420px,520px)_1fr]">
+          <form
+            id="ec-html-generator-form"
+            className="grid content-start gap-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleGenerate();
+            }}
+          >
             <section className="rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <Settings2 className="h-5 w-5 text-sky-700" aria-hidden="true" />
@@ -2538,13 +2540,6 @@ export function EcHtmlGenerator() {
                   ダウンロード（すべて）
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={handleClearForm}
-                className="mt-3 text-sm font-bold text-stone-500 underline-offset-4 hover:text-stone-800 hover:underline"
-              >
-                入力内容をクリア
-              </button>
             </article>
           </section>
         </section>
