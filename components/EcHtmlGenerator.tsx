@@ -2161,7 +2161,7 @@ export function EcHtmlGenerator() {
           </div>
         </header>
 
-        <section className="grid gap-6 xl:grid-cols-3 xl:items-start">
+        <section className="grid gap-6 xl:grid-cols-3 xl:items-stretch">
           <form
             id="ec-html-generator-form"
             className="grid content-start gap-5 xl:contents"
@@ -2170,7 +2170,7 @@ export function EcHtmlGenerator() {
               handleGenerate();
             }}
           >
-            <section className="rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] p-5 shadow-sm xl:order-1">
+            <section className="rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] p-5 shadow-sm xl:order-1 xl:h-full">
               <div className="mb-4 flex items-center gap-2">
                 <Settings2 className="h-5 w-5 text-sky-700" aria-hidden="true" />
                 <h2 className="text-lg font-bold text-sky-950">出力設定</h2>
@@ -2280,7 +2280,7 @@ export function EcHtmlGenerator() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#BBF7D0] bg-[#F0FDF4] p-5 shadow-sm xl:order-2">
+            <section className="rounded-lg border border-[#BBF7D0] bg-[#F0FDF4] p-5 shadow-sm xl:order-2 xl:h-full">
               <h2 className="text-lg font-bold text-emerald-950">商品情報</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 {productFields.map(([key, label, placeholder]) => (
@@ -2297,15 +2297,15 @@ export function EcHtmlGenerator() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#FED7AA] bg-[#FFF7ED] p-5 shadow-sm xl:order-3">
+            <section className="rounded-lg border border-[#FED7AA] bg-[#FFF7ED] p-5 shadow-sm xl:order-3 xl:flex xl:h-full xl:flex-col">
               <h2 className="text-lg font-bold text-orange-950">商品説明</h2>
-              <label className="mt-4 grid gap-1.5">
+              <label className="mt-4 grid gap-1.5 xl:flex xl:flex-1 xl:flex-col">
                 <span className="text-sm font-bold text-stone-700">商品説明文</span>
                 <textarea
                   value={form.description}
                   onChange={(event) => updateField("description", event.target.value)}
                   placeholder="商品の特徴、着用感、コーディネート提案などを入力してください。"
-                  className="min-h-44 resize-y rounded-lg border border-orange-100 bg-white px-3 py-3 text-sm leading-7 outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
+                  className="min-h-44 resize-y rounded-lg border border-orange-100 bg-white px-3 py-3 text-sm leading-7 outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-100 xl:flex-1"
                 />
               </label>
             </section>
