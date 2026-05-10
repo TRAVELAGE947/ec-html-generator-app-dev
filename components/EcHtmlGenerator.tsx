@@ -1342,6 +1342,38 @@ export function EcHtmlGenerator() {
       return { ...current, yahooImageUrls: nextImageUrls };
     });
   };
+  const moveImageUrl = (
+    key: "rakutenImageUrls" | "yahooImageUrls",
+    index: number,
+    direction: "up" | "down",
+  ) => {
+    setForm((current) => {
+      const nextImageUrls = [...current[key]];
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+
+      if (targetIndex < 0 || targetIndex >= nextImageUrls.length) {
+        return current;
+      }
+
+      [nextImageUrls[index], nextImageUrls[targetIndex]] = [
+        nextImageUrls[targetIndex],
+        nextImageUrls[index],
+      ];
+
+      return { ...current, [key]: nextImageUrls };
+    });
+  };
+
+  const clearImageUrl = (
+    key: "rakutenImageUrls" | "yahooImageUrls",
+    index: number,
+  ) => {
+    setForm((current) => {
+      const nextImageUrls = [...current[key]];
+      nextImageUrls[index] = "";
+      return { ...current, [key]: nextImageUrls };
+    });
+  };
   const selectMall = (mall: "rakuten" | "yahoo") => {
     setActiveMall(mall);
     setActivePreview(mall === "rakuten" ? "rakutenPc" : "yahoo");
@@ -1691,6 +1723,31 @@ export function EcHtmlGenerator() {
                         placeholder="https://image.rakuten.co.jp/shop-name/cabinet/item/item-1.jpg"
                         className="h-10 rounded-lg border border-stone-300 bg-white px-3 font-mono text-xs outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                       />
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => moveImageUrl("rakutenImageUrls", index, "up")}
+                          disabled={index === 0}
+                          className="rounded-md border border-stone-300 bg-white px-2 py-1 text-xs font-bold text-stone-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          上へ
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveImageUrl("rakutenImageUrls", index, "down")}
+                          disabled={index === form.rakutenImageUrls.length - 1}
+                          className="rounded-md border border-stone-300 bg-white px-2 py-1 text-xs font-bold text-stone-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          下へ
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => clearImageUrl("rakutenImageUrls", index)}
+                          className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-bold text-red-700"
+                        >
+                          削除
+                        </button>
+                      </div>
                       {cannotConvertRakutenUrl(url) ? (
                         <span className="text-xs font-semibold text-red-600">
                           変換できないURLです
@@ -1717,6 +1774,31 @@ export function EcHtmlGenerator() {
                         placeholder="https://shopping.c.yimg.jp/lib/shop-name/item-1.jpg"
                         className="h-10 rounded-lg border border-stone-300 bg-white px-3 font-mono text-xs outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                       />
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => moveImageUrl("yahooImageUrls", index, "up")}
+                          disabled={index === 0}
+                          className="rounded-md border border-stone-300 bg-white px-2 py-1 text-xs font-bold text-stone-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          上へ
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveImageUrl("yahooImageUrls", index, "down")}
+                          disabled={index === form.yahooImageUrls.length - 1}
+                          className="rounded-md border border-stone-300 bg-white px-2 py-1 text-xs font-bold text-stone-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          下へ
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => clearImageUrl("yahooImageUrls", index)}
+                          className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-bold text-red-700"
+                        >
+                          削除
+                        </button>
+                      </div>
                     </label>
                   ))}
                   <span className="text-xs font-medium text-stone-500">Yahoo! PC・Yahoo! スマホ用HTMLで使用します。</span>
@@ -2062,6 +2144,8 @@ export function EcHtmlGenerator() {
     </main>
   );
 }
+
+
 
 
 
