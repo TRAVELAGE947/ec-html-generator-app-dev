@@ -2032,7 +2032,7 @@ export function EcHtmlGenerator() {
             />
           ) : (
             <div className="flex min-h-56 w-full items-center justify-center rounded-md border border-dashed border-[#EADFCF] bg-[#FAF7F0] px-4 text-center text-sm font-bold text-stone-500">
-              入力内容を追加すると、ここに実HTMLプレビューが表示されます。
+              入力内容を追加すると、ここにHTMLプレビューが表示されます。
             </div>
           )}
         </div>
@@ -2161,16 +2161,16 @@ export function EcHtmlGenerator() {
           </div>
         </header>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(420px,520px)_1fr]">
+        <section className="grid gap-6 xl:grid-cols-3 xl:items-start">
           <form
             id="ec-html-generator-form"
-            className="grid content-start gap-5"
+            className="grid content-start gap-5 xl:contents"
             onSubmit={(event) => {
               event.preventDefault();
               handleGenerate();
             }}
           >
-            <section className="rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] p-5 shadow-sm">
+            <section className="rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] p-5 shadow-sm xl:order-1">
               <div className="mb-4 flex items-center gap-2">
                 <Settings2 className="h-5 w-5 text-sky-700" aria-hidden="true" />
                 <h2 className="text-lg font-bold text-sky-950">出力設定</h2>
@@ -2224,7 +2224,7 @@ export function EcHtmlGenerator() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#E9D5FF] bg-[#F5F3FF] p-5 shadow-sm">
+            <section className="rounded-lg border border-[#E9D5FF] bg-[#F5F3FF] p-5 shadow-sm xl:order-4">
               <div className="mb-4 flex items-center gap-2">
                 <Settings2 className="h-5 w-5 text-violet-700" aria-hidden="true" />
                 <h2 className="text-lg font-bold text-violet-950">表示順設定</h2>
@@ -2280,7 +2280,7 @@ export function EcHtmlGenerator() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#BBF7D0] bg-[#F0FDF4] p-5 shadow-sm">
+            <section className="rounded-lg border border-[#BBF7D0] bg-[#F0FDF4] p-5 shadow-sm xl:order-2">
               <h2 className="text-lg font-bold text-emerald-950">商品情報</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 {productFields.map(([key, label, placeholder]) => (
@@ -2297,7 +2297,7 @@ export function EcHtmlGenerator() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#FED7AA] bg-[#FFF7ED] p-5 shadow-sm">
+            <section className="rounded-lg border border-[#FED7AA] bg-[#FFF7ED] p-5 shadow-sm xl:order-3">
               <h2 className="text-lg font-bold text-orange-950">商品説明</h2>
               <label className="mt-4 grid gap-1.5">
                 <span className="text-sm font-bold text-stone-700">商品説明文</span>
@@ -2310,10 +2310,10 @@ export function EcHtmlGenerator() {
               </label>
             </section>
 
-            <section className="rounded-lg border border-[#FBCFE8] bg-[#FDF2F8] p-5 shadow-sm">
+            <section className="rounded-lg border border-[#FBCFE8] bg-[#FDF2F8] p-5 shadow-sm xl:order-8">
               <div className="mb-4 flex items-center gap-2">
                 <Image className="h-5 w-5 text-rose-700" aria-hidden="true" />
-                <h2 className="text-lg font-bold text-rose-950">画像設定</h2>
+                <h2 className="text-lg font-bold text-rose-950">楽天画像設定</h2>
               </div>
               <div className="grid gap-4">
                 <div className="grid gap-3 rounded-lg border border-rose-100 bg-white p-3 shadow-sm">
@@ -2368,7 +2368,15 @@ export function EcHtmlGenerator() {
                   <Download className="h-4 w-4 rotate-[-90deg]" aria-hidden="true" />
                   楽天URLからYahoo用URLを生成
                 </button>
+              </div>
+            </section>
 
+            <section className="rounded-lg border border-[#FBCFE8] bg-[#FDF2F8] p-5 shadow-sm xl:order-9">
+              <div className="mb-4 flex items-center gap-2">
+                <Image className="h-5 w-5 text-rose-700" aria-hidden="true" />
+                <h2 className="text-lg font-bold text-rose-950">Yahoo画像設定</h2>
+              </div>
+              <div className="grid gap-4">
                 <button
                   type="button"
                   onClick={handleGenerateRakutenUrls}
@@ -2423,7 +2431,7 @@ export function EcHtmlGenerator() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#DDD6FE] bg-[#F5F3FF] p-5 shadow-sm">
+            <section className="rounded-lg border border-[#DDD6FE] bg-[#F5F3FF] p-5 shadow-sm xl:order-10">
               <div className="mb-4 flex items-center gap-2">
                 <Settings2 className="h-5 w-5 text-violet-700" aria-hidden="true" />
                 <h2 className="text-lg font-bold text-violet-950">店舗共通画像設定</h2>
@@ -2474,7 +2482,7 @@ export function EcHtmlGenerator() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-[#DDD6FE] bg-white p-5 shadow-sm">
+            <section className="rounded-lg border border-[#DDD6FE] bg-white p-5 shadow-sm xl:order-11 xl:col-span-3">
               <button
                 type="button"
                 onClick={() => setIsAdvancedOpen((current) => !current)}
@@ -2523,19 +2531,19 @@ export function EcHtmlGenerator() {
               ) : null}
             </section>
 
-            <div className="flex items-start gap-2 rounded-lg border border-[#EADFCF] bg-white px-4 py-3 text-sm font-bold text-stone-700 shadow-sm">
+            <div className="flex items-start gap-2 rounded-lg border border-[#EADFCF] bg-white px-4 py-3 text-sm font-bold text-stone-700 shadow-sm xl:order-12 xl:col-span-3">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />
               Yahooスマホ：center / font未使用　楽天スマホ：style未使用
             </div>
           </form>
 
-          <section className="grid content-start gap-5">
-            <article className="rounded-lg border border-[#EADFCF] bg-white p-5 shadow-sm">
+          <section className="grid content-start gap-5 xl:contents">
+            <article className="rounded-lg border border-[#EADFCF] bg-white p-5 shadow-sm xl:order-5 xl:col-span-2">
               <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
                     <Eye className="h-5 w-5 text-amber-700" aria-hidden="true" />
-                    <h2 className="text-lg font-bold text-amber-950">実HTMLプレビュー</h2>
+                    <h2 className="text-lg font-bold text-amber-950">HTMLプレビュー</h2>
                   </div>
                   <p className="mt-1 text-sm font-medium text-stone-500">
                     現在の入力内容から作成されるHTMLの表示イメージです。コピー・ダウンロードは一括生成後のHTMLが対象です。
@@ -2602,7 +2610,7 @@ export function EcHtmlGenerator() {
               </div>
             </article>
 
-            <article className="rounded-lg border border-[#BBF7D0] bg-[#F0FDF4] p-5 shadow-sm">
+            <article className="rounded-lg border border-[#BBF7D0] bg-[#F0FDF4] p-5 shadow-sm xl:order-6 xl:col-span-3">
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-lg font-bold">出力結果（4種類まとめて生成されます）</h2>
                 {hasGeneratedHtml ? (
@@ -2668,10 +2676,8 @@ export function EcHtmlGenerator() {
                   </div>
                 ))}
               </div>
-            </article>
 
-            <article className="rounded-lg border border-emerald-100 bg-[#ECFDF5] p-5 shadow-sm">
-              <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
+              <div className="mt-5 grid gap-3 rounded-lg border border-emerald-100 bg-[#ECFDF5] p-4 lg:grid-cols-[1fr_auto_auto] lg:items-center">
                 <button
                   type="submit"
                   form="ec-html-generator-form"
@@ -2709,7 +2715,7 @@ export function EcHtmlGenerator() {
           <div className="mx-auto flex h-full max-w-6xl flex-col rounded-lg bg-white shadow-2xl">
             <div className="flex items-center justify-between gap-3 border-b border-[#EADFCF] bg-[#FAF7F0] px-5 py-4">
               <div>
-                <h2 className="text-lg font-bold text-amber-950">実HTMLプレビュー</h2>
+                <h2 className="text-lg font-bold text-amber-950">HTMLプレビュー</h2>
                 <p className="text-sm font-medium text-stone-500">
                   {currentPreviewOutput.previewTitle}
                 </p>
