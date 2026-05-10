@@ -86,8 +86,8 @@ type HtmlOutput = {
 type BannerKey = "policyUrl" | "stockNoticeUrl" | "lineBannerUrl";
 type BannerUrls = Record<BannerKey, string>;
 type BannerToggleKey = "insertLineBanner" | "insertStockNotice" | "insertPolicyImage";
-type PageBlockKey =
-  | "mainImage"
+type ImageBlockKey = "mainImage" | `image${number}`;
+type ContentBlockKey =
   | "catchCopy"
   | "productDescription"
   | "point"
@@ -96,6 +96,7 @@ type PageBlockKey =
   | "itemDetail"
   | "notice"
   | "storeCommonImages";
+type PageBlockKey = ImageBlockKey | ContentBlockKey;
 type SavedDraft = {
   id: string;
   name: string;
@@ -117,8 +118,11 @@ const copyFieldKeys = [
   "closingCopy",
 ] as const satisfies ReadonlyArray<keyof ProductForm>;
 
-const defaultPageBlockOrder: PageBlockKey[] = [
-  "mainImage",
+const maxImageUrlCount = 20;
+const imagePageBlockOrder = Array.from({ length: maxImageUrlCount }, (_, index) =>
+  index === 0 ? "mainImage" : `image${index + 1}`,
+) as ImageBlockKey[];
+const contentPageBlockOrder: ContentBlockKey[] = [
   "catchCopy",
   "productDescription",
   "point",
@@ -128,9 +132,12 @@ const defaultPageBlockOrder: PageBlockKey[] = [
   "notice",
   "storeCommonImages",
 ];
+const defaultPageBlockOrder: PageBlockKey[] = [
+  ...imagePageBlockOrder,
+  ...contentPageBlockOrder,
+];
 
-const pageBlockLabels: Record<PageBlockKey, string> = {
-  mainImage: "メイン画像",
+const contentPageBlockLabels: Record<ContentBlockKey, string> = {
   catchCopy: "キャッチコピー",
   productDescription: "商品説明",
   point: "POINT",
@@ -162,8 +169,8 @@ const initialForm: ProductForm = {
   closingCopy: "",
   notice:
     "※海外製品のため、日本製品に比べて縫製の甘さ、糸の始末、多少のほつれ、タグの位置違いなどが見られる場合がございます。\n\n※生産時期により、色味・サイズ感・仕様が若干異なる場合がございます。\n\n※ご覧いただくモニター環境や撮影時の光の加減により、実際の商品と色味が異なって見える場合がございます。\n\n※サイズは平置き採寸のため、1〜3cm程度の誤差が生じる場合がございます。\n\n※ご使用前に商品タグや洗濯表示をご確認ください。",
-  rakutenImageUrls: Array.from({ length: 20 }, () => ""),
-  yahooImageUrls: Array.from({ length: 20 }, () => ""),
+  rakutenImageUrls: Array.from({ length: maxImageUrlCount }, () => ""),
+  yahooImageUrls: Array.from({ length: maxImageUrlCount }, () => ""),
   rakutenLineBannerUrl: "",
   rakutenStockNoticeUrl: "",
   rakutenPolicyUrl: "",
@@ -188,20 +195,117 @@ const emptyGeneratedHtml: GeneratedHtml = {
 
 function normalizeStoredImageUrls(value: unknown): string[] {
   const source = Array.isArray(value) ? value : [];
-  return Array.from({ length: 20 }, (_, index) =>
+  return Array.from({ length: maxImageUrlCount }, (_, index) =>
     typeof source[index] === "string" ? source[index] : "",
   );
 }
 
+function imageUrlRowsNeeded(values: string[]): number {
+  const lastFilledIndex = values.reduce(
+    (lastIndex, value, index) => (value.trim() ? index : lastIndex),
+    -1,
+  );
+
+  return Math.min(maxImageUrlCount, Math.max(1, lastFilledIndex + 1));
+}
+
+function compactImageUrls(values: string[], removedIndex: number): string[] {
+  const compacted = values.filter((_, index) => index !== removedIndex);
+
+  return Array.from({ length: maxImageUrlCount }, (_, index) =>
+    typeof compacted[index] === "string" ? compacted[index] : "",
+  );
+}
+
+function isPageBlockKey(value: string): value is PageBlockKey {
+  return defaultPageBlockOrder.includes(value as PageBlockKey);
+}
+
+function isImageBlockKey(value: PageBlockKey): value is ImageBlockKey {
+  return value === "mainImage" || /^image\d+$/.test(value);
+}
+
+function imageBlockIndex(value: ImageBlockKey): number {
+  if (value === "mainImage") {
+    return 0;
+  }
+
+  const imageNumber = Number(value.replace("image", ""));
+  return Number.isFinite(imageNumber) ? imageNumber - 1 : 0;
+}
+
+function pageBlockLabel(value: PageBlockKey): string {
+  if (isImageBlockKey(value)) {
+    const index = imageBlockIndex(value);
+    return index === 0 ? "メイン画像" : `${index + 1}枚目画像`;
+  }
+
+  return contentPageBlockLabels[value];
+}
+
 function normalizePageBlockOrder(value: unknown): PageBlockKey[] {
-  const allowed = new Set<PageBlockKey>(defaultPageBlockOrder);
   const source = Array.isArray(value) ? value : [];
   const storedOrder = source.filter((item): item is PageBlockKey =>
-    typeof item === "string" && allowed.has(item as PageBlockKey),
+    typeof item === "string" && isPageBlockKey(item),
   );
-  const missingBlocks = defaultPageBlockOrder.filter((key) => !storedOrder.includes(key));
 
-  return [...storedOrder, ...missingBlocks];
+  if (storedOrder.length === 0) {
+    return [...defaultPageBlockOrder];
+  }
+
+  const missingImageBlocks = imagePageBlockOrder.filter((key) => !storedOrder.includes(key));
+  const lastImageBlockIndex = storedOrder.reduce(
+    (lastIndex, key, index) => (isImageBlockKey(key) ? index : lastIndex),
+    -1,
+  );
+  const nextOrder = lastImageBlockIndex >= 0
+    ? [
+        ...storedOrder.slice(0, lastImageBlockIndex + 1),
+        ...missingImageBlocks,
+        ...storedOrder.slice(lastImageBlockIndex + 1),
+      ]
+    : [...imagePageBlockOrder, ...storedOrder];
+  const missingBlocks = defaultPageBlockOrder.filter((key) => !nextOrder.includes(key));
+
+  return [...nextOrder, ...missingBlocks];
+}
+
+function reorderVisiblePageBlockOrder(
+  blockOrder: PageBlockKey[],
+  visibleOrder: PageBlockKey[],
+  blockKey: PageBlockKey,
+  targetBlockKey: PageBlockKey,
+): PageBlockKey[] {
+  const normalizedOrder = normalizePageBlockOrder(blockOrder);
+  const nextVisibleOrder = visibleOrder.filter((key) => normalizedOrder.includes(key));
+  const currentIndex = nextVisibleOrder.indexOf(blockKey);
+  const targetIndex = nextVisibleOrder.indexOf(targetBlockKey);
+
+  if (currentIndex < 0 || targetIndex < 0) {
+    return normalizedOrder;
+  }
+
+  [nextVisibleOrder[currentIndex], nextVisibleOrder[targetIndex]] = [
+    nextVisibleOrder[targetIndex],
+    nextVisibleOrder[currentIndex],
+  ];
+
+  const visibleSet = new Set<PageBlockKey>(nextVisibleOrder);
+  const hiddenBlocks = normalizedOrder.filter((key) => !visibleSet.has(key));
+  const lastVisibleImageIndex = nextVisibleOrder.reduce(
+    (lastIndex, key, index) => (isImageBlockKey(key) ? index : lastIndex),
+    -1,
+  );
+
+  if (lastVisibleImageIndex < 0) {
+    return [...nextVisibleOrder, ...hiddenBlocks];
+  }
+
+  return [
+    ...nextVisibleOrder.slice(0, lastVisibleImageIndex + 1),
+    ...hiddenBlocks,
+    ...nextVisibleOrder.slice(lastVisibleImageIndex + 1),
+  ];
 }
 
 function normalizeStoredForm(value: unknown): ProductForm {
@@ -532,12 +636,28 @@ function bannerGroupHtml(banners: BannerUrls, imageBuilder = imageHtml): string 
 
 function orderedPageBlocks(
   blockOrder: PageBlockKey[],
-  blocks: Record<PageBlockKey, string>,
+  blocks: Partial<Record<PageBlockKey, string>>,
 ): string {
   return normalizePageBlockOrder(blockOrder)
     .map((key) => blocks[key])
     .filter(Boolean)
     .join("\n");
+}
+
+function simpleImageAt(imageUrls: string[], index: number): string {
+  const url = imageUrls[index]?.trim();
+  return url ? imageHtml(url) : "";
+}
+
+function yahooMobileImageAt(imageUrls: string[], index: number, productName: string): string {
+  const url = imageUrls[index]?.trim();
+
+  if (!url) {
+    return "";
+  }
+
+  const alt = productName ? `${productName} 画像${index + 1}` : `商品画像${index + 1}`;
+  return yahooMobileImageHtml(url, alt);
 }
 
 function pointText(form: ProductForm): string {
@@ -835,9 +955,15 @@ function yahooMobileBannerHtml(banners: BannerUrls): string {
 }
 
 function generateSimpleHtml(form: ProductForm, imageUrls: string[], banners: BannerUrls): string {
-  const filledImageUrls = filled(imageUrls);
-  const blocks: Record<PageBlockKey, string> = {
-    mainImage: filledImageUrls.map((url) => imageHtml(url)).join("\n"),
+  const imageBlocks = imagePageBlockOrder.reduce<Partial<Record<PageBlockKey, string>>>(
+    (acc, key, index) => {
+      acc[key] = simpleImageAt(imageUrls, index);
+      return acc;
+    },
+    {},
+  );
+  const blocks: Partial<Record<PageBlockKey, string>> = {
+    ...imageBlocks,
     catchCopy: textBlock("キャッチコピー", form.leadCopy, "96%"),
     productDescription: textBlock("商品説明", form.description, "96%"),
     point: simplePointBlock(form, "96%"),
@@ -860,15 +986,6 @@ function generateSimpleHtml(form: ProductForm, imageUrls: string[], banners: Ban
 function imageAt(imageUrls: string[], index: number, alt?: string): string {
   const url = imageUrls[index]?.trim();
   return url ? pcImageHtml(url, alt) : "";
-}
-
-function imagesFrom(imageUrls: string[], startIndex: number, endIndex: number): string {
-  return imageUrls
-    .slice(startIndex, endIndex + 1)
-    .map((url) => url.trim())
-    .filter(Boolean)
-    .map((url) => pcImageHtml(url))
-    .join("\n");
 }
 
 function generateRakutenPcHtml(form: ProductForm, banners: BannerUrls): string {
@@ -902,33 +1019,34 @@ function generateRakutenPcHtml(form: ProductForm, banners: BannerUrls): string {
         "<br><br>",
       ].join("\n")
     : "";
-  const blocks: Record<PageBlockKey, string> = {
-    mainImage: [
-      imageAt(
-        imageUrls,
-        0,
-        form.productName.trim() ? `${form.productName.trim()} メイン画像` : "メイン画像",
-      ),
-      titleBlock,
-    ].filter(Boolean).join("\n"),
-    catchCopy: [pcTextBlock(form.leadCopy, "#f7f4ef", "center"), imageAt(imageUrls, 1)]
-      .filter(Boolean)
-      .join("\n"),
-    productDescription: [pcTextBlock(form.description, "#ffffff", "left"), imagesFrom(imageUrls, 2, 3)]
-      .filter(Boolean)
-      .join("\n"),
+  const imageBlocks = imagePageBlockOrder.reduce<Partial<Record<PageBlockKey, string>>>(
+    (acc, key, index) => {
+      acc[key] = index === 0
+        ? [
+            imageAt(
+              imageUrls,
+              0,
+              form.productName.trim() ? `${form.productName.trim()} メイン画像` : "メイン画像",
+            ),
+            titleBlock,
+          ].filter(Boolean).join("\n")
+        : imageAt(imageUrls, index);
+      return acc;
+    },
+    {},
+  );
+  const blocks: Partial<Record<PageBlockKey, string>> = {
+    ...imageBlocks,
+    catchCopy: pcTextBlock(form.leadCopy, "#f7f4ef", "center"),
+    productDescription: pcTextBlock(form.description, "#ffffff", "left"),
     point: [
       pcSectionHeading("POINT", form.pointLead),
       pcPointTable(form),
-      imagesFrom(imageUrls, 4, 5),
     ].filter(Boolean).join("\n"),
-    extraDescription: [pcTextBlock(form.extraDescription, "#fafafa", "left"), imageAt(imageUrls, 6)]
-      .filter(Boolean)
-      .join("\n"),
+    extraDescription: pcTextBlock(form.extraDescription, "#fafafa", "left"),
     color: [
       colorText ? pcSectionHeading("COLOR", colorText) : "",
       pcTextBlock(form.colorDescription, "#ffffff", "left"),
-      imagesFrom(imageUrls, 7, 19),
     ].filter(Boolean).join("\n"),
     itemDetail: [pcSectionHeading("ITEM DETAIL"), pcSpecTable(form), pcTextBlock(form.closingCopy, "#f7f4ef", "center")]
       .filter(Boolean)
@@ -954,14 +1072,6 @@ function generateRakutenPcHtml(form: ProductForm, banners: BannerUrls): string {
 
 function generateYahooMobileHtml(form: ProductForm, banners: BannerUrls): string {
   const productName = form.productName.trim();
-  const imageHtml = filled(form.yahooImageUrls)
-    .map((url, index) => {
-      const alt = productName
-        ? `${productName} 画像${index + 1}`
-        : `商品画像${index + 1}`;
-      return yahooMobileImageHtml(url, alt);
-    })
-    .join("\n");
   const specHtml = yahooMobileSpecTable(form);
   const itemDetailBlock = specHtml
     ? [
@@ -974,8 +1084,15 @@ function generateYahooMobileHtml(form: ProductForm, banners: BannerUrls): string
         specHtml,
       ].join("\n")
     : "";
-  const blocks: Record<PageBlockKey, string> = {
-    mainImage: imageHtml,
+  const imageBlocks = imagePageBlockOrder.reduce<Partial<Record<PageBlockKey, string>>>(
+    (acc, key, index) => {
+      acc[key] = yahooMobileImageAt(form.yahooImageUrls, index, productName);
+      return acc;
+    },
+    {},
+  );
+  const blocks: Partial<Record<PageBlockKey, string>> = {
+    ...imageBlocks,
     catchCopy: yahooMobileTextBlock("キャッチコピー", form.leadCopy),
     productDescription: yahooMobileTextBlock("商品説明", form.description),
     point: yahooMobilePointTable(form),
@@ -1453,6 +1570,8 @@ export function EcHtmlGenerator() {
   const [isHtmlOpen, setIsHtmlOpen] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [visibleRakutenImageRows, setVisibleRakutenImageRows] = useState(1);
+  const [visibleYahooImageRows, setVisibleYahooImageRows] = useState(1);
 
   const filledRakutenImageCount = useMemo(
     () => filled(form.rakutenImageUrls).length,
@@ -1472,6 +1591,22 @@ export function EcHtmlGenerator() {
     }),
     [filledRakutenImageCount, filledYahooImageCount],
   );
+  const visibleRakutenImageRowCount = useMemo(
+    () => Math.min(
+      maxImageUrlCount,
+      Math.max(visibleRakutenImageRows, imageUrlRowsNeeded(form.rakutenImageUrls)),
+    ),
+    [form.rakutenImageUrls, visibleRakutenImageRows],
+  );
+  const visibleYahooImageRowCount = useMemo(
+    () => Math.min(
+      maxImageUrlCount,
+      Math.max(visibleYahooImageRows, imageUrlRowsNeeded(form.yahooImageUrls)),
+    ),
+    [form.yahooImageUrls, visibleYahooImageRows],
+  );
+  const visibleRakutenImageUrls = form.rakutenImageUrls.slice(0, visibleRakutenImageRowCount);
+  const visibleYahooImageUrls = form.yahooImageUrls.slice(0, visibleYahooImageRowCount);
 
   useEffect(() => {
     try {
@@ -1542,53 +1677,57 @@ export function EcHtmlGenerator() {
       return { ...current, yahooImageUrls: nextImageUrls };
     });
   };
-  const moveImageUrl = (
-    key: "rakutenImageUrls" | "yahooImageUrls",
-    index: number,
-    direction: "up" | "down",
-  ) => {
-    setForm((current) => {
-      const nextImageUrls = [...current[key]];
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-
-      if (targetIndex < 0 || targetIndex >= nextImageUrls.length) {
-        return current;
-      }
-
-      [nextImageUrls[index], nextImageUrls[targetIndex]] = [
-        nextImageUrls[targetIndex],
-        nextImageUrls[index],
-      ];
-
-      return { ...current, [key]: nextImageUrls };
-    });
-  };
-
   const clearImageUrl = (
     key: "rakutenImageUrls" | "yahooImageUrls",
     index: number,
   ) => {
+    const nextImageUrls = compactImageUrls(form[key], index);
+
     setForm((current) => {
-      const nextImageUrls = [...current[key]];
-      nextImageUrls[index] = "";
-      return { ...current, [key]: nextImageUrls };
+      return { ...current, [key]: compactImageUrls(current[key], index) };
     });
+
+    if (key === "rakutenImageUrls") {
+      setVisibleRakutenImageRows((current) =>
+        Math.max(1, Math.max(imageUrlRowsNeeded(nextImageUrls), current - 1)),
+      );
+    } else {
+      setVisibleYahooImageRows((current) =>
+        Math.max(1, Math.max(imageUrlRowsNeeded(nextImageUrls), current - 1)),
+      );
+    }
   };
-  const movePageBlock = (index: number, direction: "up" | "down") => {
+  const addImageUrlRow = (key: "rakutenImageUrls" | "yahooImageUrls") => {
+    if (key === "rakutenImageUrls") {
+      setVisibleRakutenImageRows((current) =>
+        Math.min(maxImageUrlCount, Math.max(current, visibleRakutenImageRowCount) + 1),
+      );
+      return;
+    }
+
+    setVisibleYahooImageRows((current) =>
+      Math.min(maxImageUrlCount, Math.max(current, visibleYahooImageRowCount) + 1),
+    );
+  };
+  const movePageBlock = (
+    blockKey: PageBlockKey,
+    targetBlockKey: PageBlockKey | undefined,
+    visibleOrder: PageBlockKey[],
+  ) => {
+    if (!targetBlockKey) {
+      return;
+    }
+
     setForm((current) => {
-      const nextBlockOrder = normalizePageBlockOrder(current.pageBlockOrder);
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-
-      if (targetIndex < 0 || targetIndex >= nextBlockOrder.length) {
-        return current;
-      }
-
-      [nextBlockOrder[index], nextBlockOrder[targetIndex]] = [
-        nextBlockOrder[targetIndex],
-        nextBlockOrder[index],
-      ];
-
-      return { ...current, pageBlockOrder: nextBlockOrder };
+      return {
+        ...current,
+        pageBlockOrder: reorderVisiblePageBlockOrder(
+          current.pageBlockOrder,
+          visibleOrder,
+          blockKey,
+          targetBlockKey,
+        ),
+      };
     });
   };
   const selectMall = (mall: "rakuten" | "yahoo") => {
@@ -1610,6 +1749,8 @@ export function EcHtmlGenerator() {
 
     window.localStorage.removeItem(formStorageKey);
     setForm(initialForm);
+    setVisibleRakutenImageRows(1);
+    setVisibleYahooImageRows(1);
     setGenerated(emptyGeneratedHtml);
     setHasGeneratedHtml(false);
     setCopiedKey(null);
@@ -1637,7 +1778,11 @@ export function EcHtmlGenerator() {
   };
 
   const handleLoadDraft = (draft: SavedDraft) => {
-    setForm(normalizeStoredForm(draft.form));
+    const nextForm = normalizeStoredForm(draft.form);
+
+    setForm(nextForm);
+    setVisibleRakutenImageRows(imageUrlRowsNeeded(nextForm.rakutenImageUrls));
+    setVisibleYahooImageRows(imageUrlRowsNeeded(nextForm.yahooImageUrls));
     resetGeneratedState();
     setDraftMessage(`「${draft.name}」を呼び出しました。`);
   };
@@ -1654,8 +1799,8 @@ export function EcHtmlGenerator() {
 
     setForm((current) => ({
       ...current,
-      rakutenImageUrls: Array.from({ length: 20 }, () => ""),
-      yahooImageUrls: Array.from({ length: 20 }, () => ""),
+      rakutenImageUrls: Array.from({ length: maxImageUrlCount }, () => ""),
+      yahooImageUrls: Array.from({ length: maxImageUrlCount }, () => ""),
       rakutenLineBannerUrl: "",
       rakutenStockNoticeUrl: "",
       rakutenPolicyUrl: "",
@@ -1663,6 +1808,8 @@ export function EcHtmlGenerator() {
       yahooStockNoticeUrl: "",
       yahooPolicyUrl: "",
     }));
+    setVisibleRakutenImageRows(1);
+    setVisibleYahooImageRows(1);
     resetGeneratedState();
     setDraftMessage("画像設定をクリアしました。");
   };
@@ -1718,6 +1865,8 @@ export function EcHtmlGenerator() {
       return;
     }
 
+    const nextYahooImageUrls = convertRakutenUrlsToYahoo(form.rakutenImageUrls);
+
     setForm((current) => ({
       ...current,
       yahooImageUrls: convertRakutenUrlsToYahoo(current.rakutenImageUrls),
@@ -1725,6 +1874,7 @@ export function EcHtmlGenerator() {
       yahooStockNoticeUrl: convertRakutenToYahooUrl(current.rakutenStockNoticeUrl),
       yahooPolicyUrl: convertRakutenToYahooUrl(current.rakutenPolicyUrl),
     }));
+    setVisibleYahooImageRows(imageUrlRowsNeeded(nextYahooImageUrls));
   };
 
 
@@ -1742,6 +1892,8 @@ export function EcHtmlGenerator() {
       return;
     }
 
+    const nextRakutenImageUrls = convertYahooUrlsToRakuten(form.yahooImageUrls);
+
     setForm((current) => ({
       ...current,
       rakutenImageUrls: convertYahooUrlsToRakuten(current.yahooImageUrls),
@@ -1749,6 +1901,7 @@ export function EcHtmlGenerator() {
       rakutenStockNoticeUrl: convertYahooToRakutenUrl(current.yahooStockNoticeUrl),
       rakutenPolicyUrl: convertYahooToRakutenUrl(current.yahooPolicyUrl),
     }));
+    setVisibleRakutenImageRows(imageUrlRowsNeeded(nextRakutenImageUrls));
   };
   const handleCopy = async (key: keyof GeneratedHtml) => {
     const text = generated[key];
@@ -1849,6 +2002,13 @@ export function EcHtmlGenerator() {
     ["insertPolicyImage", "ポリシー画像を挿入"],
   ];
   const pageBlockItems = normalizePageBlockOrder(form.pageBlockOrder);
+  const visiblePageBlockImageCount = Math.max(
+    visibleRakutenImageRowCount,
+    visibleYahooImageRowCount,
+  );
+  const visiblePageBlockItems = pageBlockItems.filter((blockKey) =>
+    !isImageBlockKey(blockKey) || imageBlockIndex(blockKey) < visiblePageBlockImageCount,
+  );
 
   const renderPreview = (expanded = false) => {
     const previewHtml = generated[activePreview];
@@ -2073,7 +2233,7 @@ export function EcHtmlGenerator() {
               </p>
 
               <div className="mt-4 grid gap-2">
-                {pageBlockItems.map((blockKey, index) => (
+                {visiblePageBlockItems.map((blockKey, index) => (
                   <div
                     key={blockKey}
                     className="grid gap-3 rounded-lg border border-violet-100 bg-white p-3 shadow-sm sm:grid-cols-[auto_1fr_auto] sm:items-center"
@@ -2082,12 +2242,18 @@ export function EcHtmlGenerator() {
                       {index + 1}
                     </span>
                     <span className="text-sm font-bold text-stone-800">
-                      {pageBlockLabels[blockKey]}
+                      {pageBlockLabel(blockKey)}
                     </span>
                     <div className="flex flex-wrap gap-2 sm:justify-end">
                       <button
                         type="button"
-                        onClick={() => movePageBlock(index, "up")}
+                        onClick={() =>
+                          movePageBlock(
+                            blockKey,
+                            visiblePageBlockItems[index - 1],
+                            visiblePageBlockItems,
+                          )
+                        }
                         disabled={index === 0}
                         className="rounded-md border border-violet-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
                       >
@@ -2095,8 +2261,14 @@ export function EcHtmlGenerator() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => movePageBlock(index, "down")}
-                        disabled={index === pageBlockItems.length - 1}
+                        onClick={() =>
+                          movePageBlock(
+                            blockKey,
+                            visiblePageBlockItems[index + 1],
+                            visiblePageBlockItems,
+                          )
+                        }
+                        disabled={index === visiblePageBlockItems.length - 1}
                         className="rounded-md border border-violet-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         下へ
@@ -2148,7 +2320,7 @@ export function EcHtmlGenerator() {
                     <h4 className="text-sm font-bold text-stone-700">楽天用画像URL</h4>
                     <span className="text-xs font-bold text-stone-500">{filledRakutenImageCount}/20</span>
                   </div>
-                  {form.rakutenImageUrls.map((url, index) => (
+                  {visibleRakutenImageUrls.map((url, index) => (
                     <label key={`rakuten-${index}`} className="grid gap-1">
                       <span className="text-xs font-semibold text-stone-500">
                         {index === 0 ? "1枚目 メイン画像URL" : `${index + 1}枚目 画像URL`}
@@ -2160,22 +2332,6 @@ export function EcHtmlGenerator() {
                         className="h-10 rounded-lg border border-rose-100 bg-white px-3 font-mono text-xs outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100"
                       />
                       <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => moveImageUrl("rakutenImageUrls", index, "up")}
-                          disabled={index === 0}
-                          className="rounded-md border border-rose-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          上へ
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveImageUrl("rakutenImageUrls", index, "down")}
-                          disabled={index === form.rakutenImageUrls.length - 1}
-                          className="rounded-md border border-rose-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          下へ
-                        </button>
                         <button
                           type="button"
                           onClick={() => clearImageUrl("rakutenImageUrls", index)}
@@ -2193,6 +2349,15 @@ export function EcHtmlGenerator() {
                   ))}
                   <span className="text-xs font-medium text-stone-500">楽天PC・楽天スマホ用HTMLで使用します。</span>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => addImageUrlRow("rakutenImageUrls")}
+                  disabled={visibleRakutenImageRowCount >= maxImageUrlCount}
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  楽天画像URLを追加
+                </button>
 
                 <button
                   type="button"
@@ -2217,7 +2382,7 @@ export function EcHtmlGenerator() {
                     <h4 className="text-sm font-bold text-stone-700">Yahoo用画像URL</h4>
                     <span className="text-xs font-bold text-stone-500">{filledYahooImageCount}/20</span>
                   </div>
-                  {form.yahooImageUrls.map((url, index) => (
+                  {visibleYahooImageUrls.map((url, index) => (
                     <label key={`yahoo-${index}`} className="grid gap-1">
                       <span className="text-xs font-semibold text-stone-500">
                         {index === 0 ? "1枚目 メイン画像URL" : `${index + 1}枚目 画像URL`}
@@ -2231,22 +2396,6 @@ export function EcHtmlGenerator() {
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => moveImageUrl("yahooImageUrls", index, "up")}
-                          disabled={index === 0}
-                          className="rounded-md border border-rose-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          上へ
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveImageUrl("yahooImageUrls", index, "down")}
-                          disabled={index === form.yahooImageUrls.length - 1}
-                          className="rounded-md border border-rose-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          下へ
-                        </button>
-                        <button
-                          type="button"
                           onClick={() => clearImageUrl("yahooImageUrls", index)}
                           className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-bold text-red-700"
                         >
@@ -2257,6 +2406,15 @@ export function EcHtmlGenerator() {
                   ))}
                   <span className="text-xs font-medium text-stone-500">Yahoo! PC・Yahoo! スマホ用HTMLで使用します。</span>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => addImageUrlRow("yahooImageUrls")}
+                  disabled={visibleYahooImageRowCount >= maxImageUrlCount}
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Yahoo画像URLを追加
+                </button>
 
                 <p className="rounded-lg border border-rose-100 bg-white px-3 py-2 text-sm font-medium text-stone-600">
                   選択したモールに応じた画像URLを使用します。
