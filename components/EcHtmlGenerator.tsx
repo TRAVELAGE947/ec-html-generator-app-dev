@@ -1582,6 +1582,7 @@ export function EcHtmlGenerator() {
     [form.yahooImageUrls],
   );
   const currentPreviewOutput = outputs.find((output) => output.key === activePreview) ?? outputs[0];
+  const previewGenerated = useMemo(() => generateHtml(form), [form]);
   const outputWarnings = useMemo<Record<keyof GeneratedHtml, string>>(
     () => ({
       rakutenPc: filledRakutenImageCount ? "" : "楽天用画像URLが未入力です",
@@ -2011,7 +2012,7 @@ export function EcHtmlGenerator() {
   );
 
   const renderPreview = (expanded = false) => {
-    const previewHtml = generated[activePreview];
+    const previewHtml = previewGenerated[activePreview];
     const isMobilePreview = activePreview === "rakutenMobile" || activePreview === "yahooMobile";
     const previewWidth = isMobilePreview ? 375 : currentPreviewOutput.previewMaxWidth;
     const previewHeight = expanded ? "min(78vh, 920px)" : isMobilePreview ? 680 : 760;
@@ -2022,7 +2023,7 @@ export function EcHtmlGenerator() {
         style={{ width: previewWidth, maxWidth: "100%" }}
       >
         <div className="overflow-hidden rounded-lg border border-[#EADFCF] bg-white p-3">
-          {hasGeneratedHtml && previewHtml ? (
+          {previewHtml ? (
             <iframe
               title={currentPreviewOutput.previewTitle}
               srcDoc={previewHtml}
@@ -2031,7 +2032,7 @@ export function EcHtmlGenerator() {
             />
           ) : (
             <div className="flex min-h-56 w-full items-center justify-center rounded-md border border-dashed border-[#EADFCF] bg-[#FAF7F0] px-4 text-center text-sm font-bold text-stone-500">
-              HTMLを生成すると、ここに実HTMLプレビューが表示されます。
+              入力内容を追加すると、ここに実HTMLプレビューが表示されます。
             </div>
           )}
         </div>
@@ -2537,7 +2538,7 @@ export function EcHtmlGenerator() {
                     <h2 className="text-lg font-bold text-amber-950">実HTMLプレビュー</h2>
                   </div>
                   <p className="mt-1 text-sm font-medium text-stone-500">
-                    コピー・ダウンロードされるHTMLの表示イメージです。
+                    現在の入力内容から作成されるHTMLの表示イメージです。コピー・ダウンロードは一括生成後のHTMLが対象です。
                   </p>
                 </div>
 
