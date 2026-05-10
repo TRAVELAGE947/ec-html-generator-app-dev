@@ -2316,6 +2316,15 @@ export function EcHtmlGenerator() {
                 <h2 className="text-lg font-bold text-rose-950">楽天画像設定</h2>
               </div>
               <div className="grid gap-4">
+                <button
+                  type="button"
+                  onClick={handleGenerateYahooUrls}
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2"
+                >
+                  <Download className="h-4 w-4 rotate-[-90deg]" aria-hidden="true" />
+                  楽天URLからYahoo用URLを生成
+                </button>
+
                 <div className="grid gap-3 rounded-lg border border-rose-100 bg-white p-3 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <h4 className="text-sm font-bold text-stone-700">楽天用画像URL</h4>
@@ -2358,15 +2367,6 @@ export function EcHtmlGenerator() {
                   className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   楽天画像URLを追加
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleGenerateYahooUrls}
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2"
-                >
-                  <Download className="h-4 w-4 rotate-[-90deg]" aria-hidden="true" />
-                  楽天URLからYahoo用URLを生成
                 </button>
               </div>
             </section>
