@@ -1266,6 +1266,7 @@ export function EcHtmlGenerator() {
   const [copiedKey, setCopiedKey] = useState<keyof GeneratedHtml | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
   const [hasRestoredForm, setHasRestoredForm] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState("");
   const [activeMall, setActiveMall] = useState<"rakuten" | "yahoo">("rakuten");
   const [activePreview, setActivePreview] = useState<keyof GeneratedHtml>("rakutenPc");
   const [isHtmlOpen, setIsHtmlOpen] = useState(false);
@@ -1311,6 +1312,7 @@ export function EcHtmlGenerator() {
 
     try {
       window.localStorage.setItem(formStorageKey, JSON.stringify(form));
+      setLastSavedAt(new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }));
     } catch (error) {
       console.warn("Failed to save EC HTML generator form:", error);
     }
@@ -1602,8 +1604,14 @@ export function EcHtmlGenerator() {
                 楽天市場・Yahoo!ショッピング対応 商品ページHTML作成ツール
               </p>
             </div>
-            <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
-              1回の入力で4種類のHTMLをまとめて生成
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              <p className="font-bold">
+                このブラウザに現在の下書きを自動保存中
+                {lastSavedAt ? `　最終保存：${lastSavedAt}` : ""}
+              </p>
+              <p className="mt-1 text-xs font-medium leading-5 text-emerald-800">
+                現在編集中の商品データを1件だけ保存します。同じPC・同じブラウザで開くと自動復元されます。
+              </p>
             </div>
           </div>
         </header>
@@ -2144,6 +2152,14 @@ export function EcHtmlGenerator() {
     </main>
   );
 }
+
+
+
+
+
+
+
+
 
 
 
