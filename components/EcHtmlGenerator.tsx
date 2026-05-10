@@ -312,6 +312,30 @@ function convertRakutenUrlsToYahoo(urls: string[]): string[] {
   return urls.map(convertRakutenToYahooUrl);
 }
 
+function normalizeRakutenStoreId(storeId: string): string {
+  return storeId === "h-garden-fuk" ? "h-garden" : storeId;
+}
+
+function convertYahooToRakutenUrl(url: string): string {
+  const trimmed = url.trim();
+
+  if (!trimmed || !trimmed.startsWith(yahooImageBaseUrl)) {
+    return "";
+  }
+
+  const path = trimmed.slice(yahooImageBaseUrl.length);
+  const [storeId, ...rest] = path.split("/");
+  const filename = rest.pop()?.trim();
+
+  return storeId && filename
+    ? `${rakutenImageBaseUrl}${normalizeRakutenStoreId(storeId)}/cabinet/${filename}`
+    : "";
+}
+
+function convertYahooUrlsToRakuten(urls: string[]): string[] {
+  return urls.map(convertYahooToRakutenUrl);
+}
+
 function cannotConvertRakutenUrl(url: string): boolean {
   const trimmed = url.trim();
   return Boolean(trimmed) && !convertRakutenToYahooUrl(trimmed);
@@ -1387,6 +1411,29 @@ export function EcHtmlGenerator() {
     }));
   };
 
+
+  const handleGenerateRakutenUrls = () => {
+    const hasExistingRakutenUrls =
+      form.rakutenImageUrls.some((url) => url.trim()) ||
+      form.rakutenLineBannerUrl.trim() ||
+      form.rakutenStockNoticeUrl.trim() ||
+      form.rakutenPolicyUrl.trim();
+
+    if (
+      hasExistingRakutenUrls &&
+      !window.confirm("入力済みの楽天画像URLがあります。Yahoo URLから生成したURLで上書きしてもよろしいですか？")
+    ) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      rakutenImageUrls: convertYahooUrlsToRakuten(current.yahooImageUrls),
+      rakutenLineBannerUrl: convertYahooToRakutenUrl(current.yahooLineBannerUrl),
+      rakutenStockNoticeUrl: convertYahooToRakutenUrl(current.yahooStockNoticeUrl),
+      rakutenPolicyUrl: convertYahooToRakutenUrl(current.yahooPolicyUrl),
+    }));
+  };
   const handleCopy = async (key: keyof GeneratedHtml) => {
     const text = generated[key];
 
@@ -1744,6 +1791,15 @@ export function EcHtmlGenerator() {
                   楽天URLからYahoo用URLを生成
                 </button>
 
+                <button
+                  type="button"
+                  onClick={handleGenerateRakutenUrls}
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                >
+                  <Download className="h-4 w-4 rotate-90" aria-hidden="true" />
+                  Yahoo URLから楽天用URLを生成
+                </button>
+
                 <p className="rounded-lg border border-[#eadfce] bg-[#fbf8f1] px-3 py-2 text-sm font-medium text-stone-600">
                   選択したモールに応じた画像URLを使用します。
                 </p>
@@ -2066,6 +2122,12 @@ export function EcHtmlGenerator() {
     </main>
   );
 }
+
+
+
+
+
+
 
 
 
