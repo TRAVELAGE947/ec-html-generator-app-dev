@@ -222,7 +222,7 @@ const outputs: HtmlOutput[] = [
     title: "楽天PC用HTML",
     description: "雑誌風レイアウト、table/font/img中心",
     previewTitle: "楽天PC用プレビュー",
-    previewMaxWidth: 720,
+    previewMaxWidth: 725,
   },
   {
     key: "rakutenMobile",
@@ -236,7 +236,7 @@ const outputs: HtmlOutput[] = [
     title: "Yahoo PC用HTML",
     description: "既存のYahoo用シンプルHTML",
     previewTitle: "Yahoo PC用プレビュー",
-    previewMaxWidth: 720,
+    previewMaxWidth: 725,
   },
   {
     key: "yahooMobile",
@@ -1281,14 +1281,6 @@ export function EcHtmlGenerator() {
     [form.yahooImageUrls],
   );
   const currentPreviewOutput = outputs.find((output) => output.key === activePreview) ?? outputs[0];
-  const previewImages = useMemo(
-    () => filled(
-      activePreview === "rakutenPc" || activePreview === "rakutenMobile"
-        ? form.rakutenImageUrls
-        : form.yahooImageUrls,
-    ),
-    [activePreview, form.rakutenImageUrls, form.yahooImageUrls],
-  );
   const outputWarnings = useMemo<Record<keyof GeneratedHtml, string>>(
     () => ({
       rakutenPc: filledRakutenImageCount ? "" : "楽天用画像URLが未入力です",
@@ -1532,86 +1524,34 @@ export function EcHtmlGenerator() {
     ["insertStockNotice", "在庫注意画像を挿入"],
     ["insertPolicyImage", "ポリシー画像を挿入"],
   ];
-  const previewSpecRows = (
-    [
-      ["ブランド", form.brand],
-      ["カラー", form.colors],
-      ["サイズ", form.sizes],
-      ["素材", form.material],
-      ["生産国", form.country],
-    ] as Array<[string, string]>
-  ).filter(([, value]) => value.trim().length > 0);
+  const renderPreview = (expanded = false) => {
+    const previewHtml = generated[activePreview];
+    const isMobilePreview = activePreview === "rakutenMobile" || activePreview === "yahooMobile";
+    const previewWidth = isMobilePreview ? 375 : currentPreviewOutput.previewMaxWidth;
+    const previewHeight = expanded ? "min(78vh, 920px)" : isMobilePreview ? 680 : 760;
 
-  const renderPreview = (expanded = false) => (
-    <div className={["mx-auto bg-white", expanded ? "max-w-4xl" : "max-w-[760px]"].join(" ")}>
-      <div className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-        <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(220px,44%)_1fr]">
-          <div className="grid gap-3">
-            {previewImages[0] ? (
-              <img
-                src={previewImages[0]}
-                alt={form.productName || "商品メイン画像"}
-                className="aspect-square w-full rounded-lg border border-stone-200 object-cover"
-              />
-            ) : (
-              <div className="flex aspect-square w-full items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 text-stone-400">
-                <Image className="h-10 w-10" aria-hidden="true" />
-              </div>
-            )}
-            <div className="grid grid-cols-5 gap-2">
-              {Array.from({ length: 5 }, (_, index) => previewImages[index + 1] ?? "").map((url, index) => (
-                <div
-                  key={`${url}-${index}`}
-                  className="aspect-square overflow-hidden rounded-md border border-stone-200 bg-stone-50"
-                >
-                  {url ? (
-                    <img
-                      src={url}
-                      alt={`サブ画像 ${index + 1}`}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : null}
-                </div>
-              ))}
+    return (
+      <div
+        className="mx-auto bg-white"
+        style={{ width: previewWidth, maxWidth: "100%" }}
+      >
+        <div className="overflow-hidden rounded-lg border border-stone-200 bg-white p-3">
+          {hasGeneratedHtml && previewHtml ? (
+            <iframe
+              title={currentPreviewOutput.previewTitle}
+              srcDoc={previewHtml}
+              className="block w-full border-0 bg-white"
+              style={{ height: previewHeight }}
+            />
+          ) : (
+            <div className="flex min-h-56 w-full items-center justify-center rounded-md border border-dashed border-stone-300 bg-stone-50 px-4 text-center text-sm font-bold text-stone-500">
+              HTMLを生成すると、ここに実HTMLプレビューが表示されます。
             </div>
-          </div>
-
-          <div className="flex flex-col gap-5">
-            <div>
-              <p className="text-sm font-bold text-emerald-700">
-                {form.brand || "ブランド名"}
-              </p>
-              <h2 className="mt-2 text-2xl font-bold leading-tight text-stone-900">
-                {form.productName || "商品名が入ります"}
-              </h2>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-stone-600">
-                {form.description || "商品説明文を入力すると、完成イメージとしてここに表示されます。"}
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
-              <h3 className="text-sm font-bold text-stone-800">商品詳細表</h3>
-              <dl className="mt-3 grid gap-2 text-sm">
-                {previewSpecRows.length ? (
-                  previewSpecRows.map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="grid grid-cols-[88px_1fr] gap-3 border-b border-stone-200 pb-2 last:border-b-0 last:pb-0"
-                    >
-                      <dt className="font-bold text-stone-500">{label}</dt>
-                      <dd className="whitespace-pre-wrap text-stone-800">{value}</dd>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-stone-500">商品情報を入力すると詳細が表示されます。</p>
-                )}
-              </dl>
-            </div>
-          </div>
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <main className="min-h-screen bg-[#f5f3ef] px-4 py-6 text-stone-900 sm:px-6 lg:px-8">
@@ -1918,10 +1858,10 @@ export function EcHtmlGenerator() {
                 <div>
                   <div className="flex items-center gap-2">
                     <Eye className="h-5 w-5 text-stone-500" aria-hidden="true" />
-                    <h2 className="text-lg font-bold">プレビュー</h2>
+                    <h2 className="text-lg font-bold">実HTMLプレビュー</h2>
                   </div>
                   <p className="mt-1 text-sm font-medium text-stone-500">
-                    {currentPreviewOutput.previewTitle}
+                    コピー・ダウンロードされるHTMLの表示イメージです。
                   </p>
                 </div>
 
@@ -2099,7 +2039,7 @@ export function EcHtmlGenerator() {
           <div className="mx-auto flex h-full max-w-6xl flex-col rounded-lg bg-white shadow-2xl">
             <div className="flex items-center justify-between gap-3 border-b border-stone-200 px-5 py-4">
               <div>
-                <h2 className="text-lg font-bold">拡大表示</h2>
+                <h2 className="text-lg font-bold">実HTMLプレビュー</h2>
                 <p className="text-sm font-medium text-stone-500">
                   {currentPreviewOutput.previewTitle}
                 </p>
