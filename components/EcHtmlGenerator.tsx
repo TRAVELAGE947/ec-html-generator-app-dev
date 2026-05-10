@@ -1569,7 +1569,7 @@ export function EcHtmlGenerator() {
         className="mx-auto bg-white"
         style={{ width: previewWidth, maxWidth: "100%" }}
       >
-        <div className="overflow-hidden rounded-lg border border-stone-200 bg-white p-3">
+        <div className="overflow-hidden rounded-lg border border-[#EADFCF] bg-white p-3">
           {hasGeneratedHtml && previewHtml ? (
             <iframe
               title={currentPreviewOutput.previewTitle}
@@ -1578,7 +1578,7 @@ export function EcHtmlGenerator() {
               style={{ height: previewHeight }}
             />
           ) : (
-            <div className="flex min-h-56 w-full items-center justify-center rounded-md border border-dashed border-stone-300 bg-stone-50 px-4 text-center text-sm font-bold text-stone-500">
+            <div className="flex min-h-56 w-full items-center justify-center rounded-md border border-dashed border-[#EADFCF] bg-[#FAF7F0] px-4 text-center text-sm font-bold text-stone-500">
               HTMLを生成すると、ここに実HTMLプレビューが表示されます。
             </div>
           )}
@@ -1588,12 +1588,12 @@ export function EcHtmlGenerator() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f5f3ef] px-4 py-6 text-stone-900 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[#FAF7F0] px-4 py-6 text-stone-900 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-[1500px] flex-col gap-6">
-        <header className="rounded-lg border border-stone-200 bg-white px-5 py-6 shadow-sm sm:px-7">
+        <header className="rounded-lg border border-[#EADFCF] bg-white px-5 py-6 shadow-sm sm:px-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-[#efe7d8] px-3 py-1 text-sm font-bold text-stone-700">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#BFDBFE] bg-[#EEF6FF] px-3 py-1 text-sm font-bold text-sky-800">
                 <FileText className="h-4 w-4" aria-hidden="true" />
                 EC HTML Generator
               </div>
@@ -1604,7 +1604,7 @@ export function EcHtmlGenerator() {
                 楽天市場・Yahoo!ショッピング対応 商品ページHTML作成ツール
               </p>
             </div>
-            <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            <div className="rounded-lg border border-emerald-200 bg-[#ECFDF5] px-4 py-3 text-sm text-emerald-900 shadow-sm">
               <p className="font-bold">
                 このブラウザに現在の下書きを自動保存中
                 {lastSavedAt ? `　最終保存：${lastSavedAt}` : ""}
@@ -1625,10 +1625,10 @@ export function EcHtmlGenerator() {
               handleGenerate();
             }}
           >
-            <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+            <section className="rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
-                <Settings2 className="h-5 w-5 text-stone-500" aria-hidden="true" />
-                <h2 className="text-lg font-bold">出力設定</h2>
+                <Settings2 className="h-5 w-5 text-sky-700" aria-hidden="true" />
+                <h2 className="text-lg font-bold text-sky-950">出力設定</h2>
               </div>
 
               <div className="grid gap-5">
@@ -1646,8 +1646,8 @@ export function EcHtmlGenerator() {
                         className={[
                           "flex items-center gap-2 rounded-lg border px-3 py-3 text-left text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2",
                           activeMall === mall
-                            ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                            : "border-stone-200 bg-stone-50 text-stone-700 hover:bg-stone-100",
+                            ? "border-sky-400 bg-white text-sky-900 shadow-sm"
+                            : "border-sky-100 bg-white/80 text-stone-700 hover:bg-white",
                         ].join(" ")}
                       >
                         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-xs shadow-sm">
@@ -1665,7 +1665,7 @@ export function EcHtmlGenerator() {
                     {outputs.map((output) => (
                       <span
                         key={output.key}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-[#dccdb8] bg-[#f8f3ea] px-3 py-1.5 text-sm font-bold text-stone-700"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-white px-3 py-1.5 text-sm font-bold text-sky-900"
                       >
                         <CheckCircle className="h-4 w-4 text-emerald-600" aria-hidden="true" />
                         {output.title.replace("用HTML", "")}
@@ -1679,8 +1679,8 @@ export function EcHtmlGenerator() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-bold">商品情報</h2>
+            <section className="rounded-lg border border-[#BBF7D0] bg-[#F0FDF4] p-5 shadow-sm">
+              <h2 className="text-lg font-bold text-emerald-950">商品情報</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 {productFields.map(([key, label, placeholder]) => (
                   <label key={key} className="grid gap-1.5">
@@ -1689,33 +1689,33 @@ export function EcHtmlGenerator() {
                       value={String(form[key])}
                       onChange={(event) => updateField(key, event.target.value)}
                       placeholder={placeholder}
-                      className="h-11 rounded-lg border border-stone-300 bg-white px-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                      className="h-11 rounded-lg border border-emerald-100 bg-white px-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                     />
                   </label>
                 ))}
               </div>
             </section>
 
-            <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-bold">商品説明</h2>
+            <section className="rounded-lg border border-[#FED7AA] bg-[#FFF7ED] p-5 shadow-sm">
+              <h2 className="text-lg font-bold text-orange-950">商品説明</h2>
               <label className="mt-4 grid gap-1.5">
                 <span className="text-sm font-bold text-stone-700">商品説明文</span>
                 <textarea
                   value={form.description}
                   onChange={(event) => updateField("description", event.target.value)}
                   placeholder="商品の特徴、着用感、コーディネート提案などを入力してください。"
-                  className="min-h-44 resize-y rounded-lg border border-stone-300 bg-white px-3 py-3 text-sm leading-7 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  className="min-h-44 resize-y rounded-lg border border-orange-100 bg-white px-3 py-3 text-sm leading-7 outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
                 />
               </label>
             </section>
 
-            <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+            <section className="rounded-lg border border-[#FBCFE8] bg-[#FDF2F8] p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
-                <Image className="h-5 w-5 text-stone-500" aria-hidden="true" />
-                <h2 className="text-lg font-bold">画像設定</h2>
+                <Image className="h-5 w-5 text-rose-700" aria-hidden="true" />
+                <h2 className="text-lg font-bold text-rose-950">画像設定</h2>
               </div>
               <div className="grid gap-4">
-                                <div className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
+                <div className="grid gap-3 rounded-lg border border-rose-100 bg-white p-3 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <h4 className="text-sm font-bold text-stone-700">楽天用画像URL</h4>
                     <span className="text-xs font-bold text-stone-500">{filledRakutenImageCount}/20</span>
@@ -1729,14 +1729,14 @@ export function EcHtmlGenerator() {
                         value={url}
                         onChange={(event) => updateRakutenImageUrl(index, event.target.value)}
                         placeholder="https://image.rakuten.co.jp/shop-name/cabinet/item/item-1.jpg"
-                        className="h-10 rounded-lg border border-stone-300 bg-white px-3 font-mono text-xs outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                        className="h-10 rounded-lg border border-rose-100 bg-white px-3 font-mono text-xs outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100"
                       />
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           onClick={() => moveImageUrl("rakutenImageUrls", index, "up")}
                           disabled={index === 0}
-                          className="rounded-md border border-stone-300 bg-white px-2 py-1 text-xs font-bold text-stone-600 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="rounded-md border border-rose-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           上へ
                         </button>
@@ -1744,7 +1744,7 @@ export function EcHtmlGenerator() {
                           type="button"
                           onClick={() => moveImageUrl("rakutenImageUrls", index, "down")}
                           disabled={index === form.rakutenImageUrls.length - 1}
-                          className="rounded-md border border-stone-300 bg-white px-2 py-1 text-xs font-bold text-stone-600 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="rounded-md border border-rose-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           下へ
                         </button>
@@ -1766,7 +1766,7 @@ export function EcHtmlGenerator() {
                   <span className="text-xs font-medium text-stone-500">楽天PC・楽天スマホ用HTMLで使用します。</span>
                 </div>
 
-                <div className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
+                <div className="grid gap-3 rounded-lg border border-rose-100 bg-white p-3 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <h4 className="text-sm font-bold text-stone-700">Yahoo用画像URL</h4>
                     <span className="text-xs font-bold text-stone-500">{filledYahooImageCount}/20</span>
@@ -1780,14 +1780,14 @@ export function EcHtmlGenerator() {
                         value={url}
                         onChange={(event) => updateYahooImageUrl(index, event.target.value)}
                         placeholder="https://shopping.c.yimg.jp/lib/shop-name/item-1.jpg"
-                        className="h-10 rounded-lg border border-stone-300 bg-white px-3 font-mono text-xs outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                        className="h-10 rounded-lg border border-rose-100 bg-white px-3 font-mono text-xs outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100"
                       />
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           onClick={() => moveImageUrl("yahooImageUrls", index, "up")}
                           disabled={index === 0}
-                          className="rounded-md border border-stone-300 bg-white px-2 py-1 text-xs font-bold text-stone-600 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="rounded-md border border-rose-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           上へ
                         </button>
@@ -1795,7 +1795,7 @@ export function EcHtmlGenerator() {
                           type="button"
                           onClick={() => moveImageUrl("yahooImageUrls", index, "down")}
                           disabled={index === form.yahooImageUrls.length - 1}
-                          className="rounded-md border border-stone-300 bg-white px-2 py-1 text-xs font-bold text-stone-600 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="rounded-md border border-rose-100 bg-white px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           下へ
                         </button>
@@ -1815,7 +1815,7 @@ export function EcHtmlGenerator() {
                 <button
                   type="button"
                   onClick={handleGenerateYahooUrls}
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2"
                 >
                   <Download className="h-4 w-4 rotate-[-90deg]" aria-hidden="true" />
                   楽天URLからYahoo用URLを生成
@@ -1824,22 +1824,22 @@ export function EcHtmlGenerator() {
                 <button
                   type="button"
                   onClick={handleGenerateRakutenUrls}
-                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-rose-100 bg-white px-4 py-2 text-sm font-bold text-rose-800 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:ring-offset-2"
                 >
                   <Download className="h-4 w-4 rotate-90" aria-hidden="true" />
                   Yahoo URLから楽天用URLを生成
                 </button>
 
-                <p className="rounded-lg border border-[#eadfce] bg-[#fbf8f1] px-3 py-2 text-sm font-medium text-stone-600">
+                <p className="rounded-lg border border-rose-100 bg-white px-3 py-2 text-sm font-medium text-stone-600">
                   選択したモールに応じた画像URLを使用します。
                 </p>
               </div>
             </section>
 
-            <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+            <section className="rounded-lg border border-[#DDD6FE] bg-[#F5F3FF] p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
-                <Settings2 className="h-5 w-5 text-stone-500" aria-hidden="true" />
-                <h2 className="text-lg font-bold">店舗共通画像設定</h2>
+                <Settings2 className="h-5 w-5 text-violet-700" aria-hidden="true" />
+                <h2 className="text-lg font-bold text-violet-950">店舗共通画像設定</h2>
               </div>
 
               <div className="grid gap-4">
@@ -1847,7 +1847,7 @@ export function EcHtmlGenerator() {
                   {bannerToggles.map(([key, label]) => (
                     <label
                       key={key}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3 text-sm font-bold text-stone-700"
+                      className="flex items-center justify-between gap-3 rounded-lg border border-violet-100 bg-white px-3 py-3 text-sm font-bold text-stone-700 shadow-sm"
                     >
                       <span>{label}</span>
                       <input
@@ -1868,7 +1868,7 @@ export function EcHtmlGenerator() {
                         value={form[field.key]}
                         onChange={(event) => updateField(field.key, event.target.value)}
                         placeholder={field.placeholder}
-                        className="h-11 rounded-lg border border-stone-300 bg-white px-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                        className="h-11 rounded-lg border border-violet-100 bg-white px-3 text-sm outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
                       />
                       {[
                         "rakutenLineBannerUrl",
@@ -1881,21 +1881,21 @@ export function EcHtmlGenerator() {
                   ))}
                 </div>
 
-                <p className="rounded-lg border border-[#eadfce] bg-[#fbf8f1] px-3 py-2 text-sm font-medium text-stone-600">
+                <p className="rounded-lg border border-violet-100 bg-white px-3 py-2 text-sm font-medium text-stone-600">
                   空欄のURL、またはOFFの共通画像は出力HTMLに挿入されません。
                 </p>
               </div>
             </section>
 
-            <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+            <section className="rounded-lg border border-[#DDD6FE] bg-white p-5 shadow-sm">
               <button
                 type="button"
                 onClick={() => setIsAdvancedOpen((current) => !current)}
                 className="flex w-full items-center justify-between gap-3 text-left"
               >
                 <span className="flex items-center gap-2 text-lg font-bold">
-                  <Settings2 className="h-5 w-5 text-stone-500" aria-hidden="true" />
-                  詳細コピー設定
+                  <Settings2 className="h-5 w-5 text-violet-700" aria-hidden="true" />
+                  <span className="text-violet-950">詳細コピー設定</span>
                 </span>
                 <span className="text-sm font-bold text-emerald-700">
                   {isAdvancedOpen ? "閉じる" : "開く"}
@@ -1906,7 +1906,7 @@ export function EcHtmlGenerator() {
                   <button
                     type="button"
                     onClick={handleAutoCopy}
-                    className="inline-flex w-fit items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                    className="inline-flex w-fit items-center gap-2 rounded-lg border border-violet-100 bg-[#F5F3FF] px-4 py-2 text-sm font-bold text-violet-800 transition hover:bg-violet-50 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:ring-offset-2"
                   >
                     <FileText className="h-4 w-4" aria-hidden="true" />
                     雑誌風コピーを自動入力
@@ -1919,14 +1919,14 @@ export function EcHtmlGenerator() {
                           <textarea
                             value={form[field.key]}
                             onChange={(event) => updateField(field.key, event.target.value)}
-                            className="min-h-24 resize-y rounded-lg border border-stone-300 bg-white px-3 py-3 text-sm leading-6 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                            className="min-h-24 resize-y rounded-lg border border-violet-100 bg-white px-3 py-3 text-sm leading-6 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
                           />
                         ) : (
                           <input
                             value={form[field.key]}
                             onChange={(event) => updateField(field.key, event.target.value)}
                             placeholder={field.placeholder}
-                            className="h-11 rounded-lg border border-stone-300 bg-white px-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                            className="h-11 rounded-lg border border-violet-100 bg-white px-3 text-sm outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
                           />
                         )}
                       </label>
@@ -1936,19 +1936,19 @@ export function EcHtmlGenerator() {
               ) : null}
             </section>
 
-            <div className="flex items-start gap-2 rounded-lg border border-[#eadfce] bg-[#fbf8f1] px-4 py-3 text-sm font-bold text-stone-700">
+            <div className="flex items-start gap-2 rounded-lg border border-[#EADFCF] bg-white px-4 py-3 text-sm font-bold text-stone-700 shadow-sm">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />
               Yahooスマホ：center / font未使用　楽天スマホ：style未使用
             </div>
           </form>
 
           <section className="grid content-start gap-5">
-            <article className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+            <article className="rounded-lg border border-[#EADFCF] bg-white p-5 shadow-sm">
               <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Eye className="h-5 w-5 text-stone-500" aria-hidden="true" />
-                    <h2 className="text-lg font-bold">実HTMLプレビュー</h2>
+                    <Eye className="h-5 w-5 text-amber-700" aria-hidden="true" />
+                    <h2 className="text-lg font-bold text-amber-950">実HTMLプレビュー</h2>
                   </div>
                   <p className="mt-1 text-sm font-medium text-stone-500">
                     コピー・ダウンロードされるHTMLの表示イメージです。
@@ -1956,7 +1956,7 @@ export function EcHtmlGenerator() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex rounded-lg border border-stone-200 bg-stone-50 p-1">
+                  <div className="flex rounded-lg border border-[#EADFCF] bg-[#FAF7F0] p-1">
                     {outputs.map((output) => {
                       const isMobile = output.key === "rakutenMobile" || output.key === "yahooMobile";
                       const Icon = isMobile ? Smartphone : Monitor;
@@ -1971,7 +1971,7 @@ export function EcHtmlGenerator() {
                           className={[
                             "inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2",
                             activePreview === output.key
-                              ? "bg-white text-emerald-800 shadow-sm"
+                              ? "bg-white text-amber-800 shadow-sm"
                               : "text-stone-600 hover:bg-white",
                           ].join(" ")}
                         >
@@ -1984,7 +1984,7 @@ export function EcHtmlGenerator() {
                   <button
                     type="button"
                     onClick={() => setIsPreviewExpanded(true)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                    className="inline-flex items-center gap-2 rounded-lg border border-[#EADFCF] bg-white px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-[#FAF7F0] focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2"
                   >
                     <Maximize2 className="h-4 w-4" aria-hidden="true" />
                     拡大表示
@@ -1992,7 +1992,7 @@ export function EcHtmlGenerator() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-stone-200 bg-[#faf8f4] p-3 sm:p-5">
+              <div className="rounded-lg border border-[#EADFCF] bg-[#FAF7F0] p-3 sm:p-5">
                 {renderPreview()}
               </div>
 
@@ -2015,7 +2015,7 @@ export function EcHtmlGenerator() {
               </div>
             </article>
 
-            <article className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+            <article className="rounded-lg border border-[#BBF7D0] bg-[#F0FDF4] p-5 shadow-sm">
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-lg font-bold">出力結果（4種類まとめて生成されます）</h2>
                 {hasGeneratedHtml ? (
@@ -2030,7 +2030,7 @@ export function EcHtmlGenerator() {
                 {outputs.map((output, index) => (
                   <div
                     key={output.key}
-                    className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-4 lg:grid-cols-[1fr_auto] lg:items-center"
+                    className="grid gap-3 rounded-lg border border-emerald-100 bg-white p-4 shadow-sm lg:grid-cols-[1fr_auto] lg:items-center"
                   >
                     <div className="flex items-start gap-3">
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-stone-600 shadow-sm">
@@ -2083,7 +2083,7 @@ export function EcHtmlGenerator() {
               </div>
             </article>
 
-            <article className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+            <article className="rounded-lg border border-emerald-100 bg-[#ECFDF5] p-5 shadow-sm">
               <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
                 <button
                   type="submit"
@@ -2097,7 +2097,7 @@ export function EcHtmlGenerator() {
                   type="button"
                   onClick={() => void handleCopyAll()}
                   disabled={!hasGeneratedHtml}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-100 bg-white px-4 py-3 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Copy className="h-4 w-4" aria-hidden="true" />
                   {copiedAll ? "コピー済み" : "コピー（すべて）"}
@@ -2106,7 +2106,7 @@ export function EcHtmlGenerator() {
                   type="button"
                   onClick={handleDownloadAll}
                   disabled={!hasGeneratedHtml}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-100 bg-white px-4 py-3 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Download className="h-4 w-4" aria-hidden="true" />
                   ダウンロード（すべて）
@@ -2127,9 +2127,9 @@ export function EcHtmlGenerator() {
       {isPreviewExpanded ? (
         <div className="fixed inset-0 z-50 bg-black/55 p-4 sm:p-6">
           <div className="mx-auto flex h-full max-w-6xl flex-col rounded-lg bg-white shadow-2xl">
-            <div className="flex items-center justify-between gap-3 border-b border-stone-200 px-5 py-4">
+            <div className="flex items-center justify-between gap-3 border-b border-[#EADFCF] bg-[#FAF7F0] px-5 py-4">
               <div>
-                <h2 className="text-lg font-bold">実HTMLプレビュー</h2>
+                <h2 className="text-lg font-bold text-amber-950">実HTMLプレビュー</h2>
                 <p className="text-sm font-medium text-stone-500">
                   {currentPreviewOutput.previewTitle}
                 </p>
@@ -2137,13 +2137,13 @@ export function EcHtmlGenerator() {
               <button
                 type="button"
                 onClick={() => setIsPreviewExpanded(false)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-stone-300 bg-white text-stone-700 transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#EADFCF] bg-white text-stone-700 transition hover:bg-[#FAF7F0] focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2"
                 aria-label="閉じる"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-[#faf8f4] p-4 sm:p-6">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[#FAF7F0] p-4 sm:p-6">
               {renderPreview(true)}
             </div>
           </div>
